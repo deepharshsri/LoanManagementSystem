@@ -24,12 +24,7 @@ public class UserService {
     LoanService loanService;
 
     public List<Loan> getAllLoans(Long userId){
-        Optional<User> userExist=userRepository.findById(userId);
-
-        return userExist.map(user->{
-            return user.getLoans();
-        }
-        ).orElseThrow(()->  new RuntimeException("userId Not found"));    
+       return loanService.getAllLoans(userId);    
     }
 
     public void saveUser(User user) {

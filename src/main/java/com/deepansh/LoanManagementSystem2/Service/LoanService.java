@@ -13,6 +13,7 @@ import com.deepansh.LoanManagementSystem2.Repository.ApprovalRepo;
 import com.deepansh.LoanManagementSystem2.Repository.LoanRepo;
 import com.deepansh.LoanManagementSystem2.Repository.LoanTypeRepo;
 import com.deepansh.LoanManagementSystem2.Repository.UserRepository;
+import java.util.List;
 
 @Service
 public class LoanService {
@@ -29,6 +30,9 @@ public class LoanService {
         @Autowired
         private ApprovalRepo approvalWorkFlowRepo;
 
+        @Autowired
+        private ApprovalWorkFlowService approvalWorkFlowService;
+
        public Loan requestLoan(Long userId,Long loanTypeId,int amount){
         Optional<User> userExist=userRepository.findById(userId);
         Optional<LoanType> loanType=loanTypeRepository.findById(loanTypeId);
@@ -39,15 +43,31 @@ public class LoanService {
                              .loanType(loanType.get())
                              .build();
         
-        ApprovalWorkflow approvalWorkflow=ApprovalWorkflow.builder()
-                                                             .stage("Pending")
-                                                             .loan(loanType.get())
-                                                             .status("Under Consideration")
-                                                             .build();
-        approvalWorkFlowRepo.save(approvalWorkflow);
-        
-        return loanRepo.save(loanApplied);
+       approvalWorkFlowService.createWorkFlow(loanTypeId);
+       return loanRepo.save(loanApplied);
   
     }
+
+    public List<Loan> getAllLoans(Long userId){
+        Optional<User> user= userRepository.findById(userId);
+        return  user.map(user1->{
+           return loanRepo.findByUser(user1);
+        }).orElseThrow(()->new RuntimeException("user not found") );
+       
+       
+    }
+    public Loan findLoanById(Long loanId){
+        return loanRepo.findById(loanId).get();
+    }
+    
+    
+    public Loan updateLoanStatus(Long loanId,String status){
+        Loan loan=loanRepo.findById(loanId).get();
+        loan.setLoanStatus(status);
+        return loanRepo.save(loan);
+    }
+
+    // add disbusement
+    
     
 }

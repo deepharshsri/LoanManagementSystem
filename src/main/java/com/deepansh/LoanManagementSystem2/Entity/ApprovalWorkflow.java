@@ -39,8 +39,8 @@ public class ApprovalWorkflow {
 
     @ManyToOne
     @JoinColumn(name = "loan_id")
-    private LoanType loan;
+    private Loan loan;
 
     @ManyToOne
-    private User users;
+    private User user;
 }
