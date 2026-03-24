@@ -60,7 +60,16 @@ public class LoanService {
         return loanRepo.findById(loanId).get();
     }
     
+    public List<ApprovalWorkflow> getPendingApprovals(){
+        return approvalWorkFlowService.getPendingApprovals();
+    }
     
+    public List<ApprovalWorkflow> getApprovedLoans(){
+        return approvalWorkFlowService.approvedApprovals();
+    }
+     //
+     // need to check again who to take update status responsibilty
+     //
     public Loan updateLoanStatus(Long loanId,String status){
         Loan loan=loanRepo.findById(loanId).get();
         loan.setLoanStatus(status);
@@ -68,6 +77,6 @@ public class LoanService {
     }
 
     // add disbusement
-    
+
     
 }

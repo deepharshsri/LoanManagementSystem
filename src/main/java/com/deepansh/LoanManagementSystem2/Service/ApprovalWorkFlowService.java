@@ -1,5 +1,6 @@
 package com.deepansh.LoanManagementSystem2.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,11 +31,20 @@ public class ApprovalWorkFlowService {
      return approvalRepo.save(approvalWorkflow);
     }
     
-    public ApprovalWorkflow updateWorkFlow(Long userId,String status,String comments){
-        ApprovalWorkflow approvalWorkflow=approvalRepo.findById(userId).get();
+    public ApprovalWorkflow updateWorkFlow(Long workFlowId,String status,String comments){
+        ApprovalWorkflow approvalWorkflow=approvalRepo.findById(workFlowId).get();
         approvalWorkflow.setStatus(status);
         approvalWorkflow.setComments(comments);
         return approvalRepo.save(approvalWorkflow);
     }
+    
+    // audit function need to written like fetch all pending approvals.
 
+    public List<ApprovalWorkflow> getPendingApprovals(){
+        return approvalRepo.findAllPendingApprovals();
+    }
+    
+    public List<ApprovalWorkflow> approvedApprovals(){
+        return approvalRepo.findAllByStatus("Approved");
+    }
 }
