@@ -3,11 +3,12 @@ package com.deepansh.LoanManagementSystem2.Entity;
 import java.util.List;
 
 import org.hibernate.annotations.ManyToAny;
-import org.springframework.data.annotation.Id;
+
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.OneToMany;
@@ -29,9 +30,10 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     private String username;
-    private String email;
     private String password;
+    
     private String role;
 
     @OneToMany(mappedBy = "user")

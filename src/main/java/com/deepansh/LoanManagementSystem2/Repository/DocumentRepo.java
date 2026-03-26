@@ -12,6 +12,7 @@ import com.deepansh.LoanManagementSystem2.Entity.Loan;
 import com.deepansh.LoanManagementSystem2.Entity.User;
 
 @Repository
+
 public interface DocumentRepo extends JpaRepository<Document, Long> {
     
 
