@@ -6,6 +6,6 @@ import org.springframework.stereotype.Repository;
 import com.deepansh.LoanManagementSystem2.Entity.LoanType;
 
 @Repository
-public interface LoanTypeRepo extends JpaRepository<LoanType,Long>{
+public interface LoanTypeRepo extends JpaRepository<LoanType,String>{
     
 }

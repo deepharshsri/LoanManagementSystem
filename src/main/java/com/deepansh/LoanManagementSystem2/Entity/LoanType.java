@@ -6,28 +6,29 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
 
 
+@Builder
 @Entity
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+
 public class LoanType {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    private String loanName;
+    private String id;
+    private String lable;
     private String description;
-    private Double interestRate;
-    private Integer tenure;
-    private Double minAmount;
-    private Double maxAmount; 
+    private Double rate;
+    private Integer mult;
+    private Integer minAmount;
+    private Integer maxAmount; 
 
     @OneToMany(mappedBy = "loanType")
     private List<Loan> loans;

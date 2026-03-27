@@ -33,17 +33,17 @@ public class LoanService {
         @Autowired
         private ApprovalWorkFlowService approvalWorkFlowService;
 
-       public Loan requestLoan(Long userId,Long loanTypeId,int amount){
+       public Loan requestLoan(Long userId,String loanTypeId,Long amount){
         Optional<User> userExist=userRepository.findById(userId);
         Optional<LoanType> loanType=loanTypeRepository.findById(loanTypeId);
         Loan loanApplied=Loan.builder()
-                             .loanAmount(amount)
-                             .loanStatus("Pending")
+                             .amount(amount)
+                             .status("Pending")
                              .user(userExist.get())
-                             .loanType(loanType.get())
+                            //  .loanType(loanType.get())
                              .build();
         
-       approvalWorkFlowService.createWorkFlow(loanTypeId);
+    //    approvalWorkFlowService.createWorkFlow(loanTypeId);
        return loanRepo.save(loanApplied);
   
     }
@@ -72,7 +72,7 @@ public class LoanService {
      //
     public Loan updateLoanStatus(Long loanId,String status){
         Loan loan=loanRepo.findById(loanId).get();
-        loan.setLoanStatus(status);
+        loan.setStatus(status);
         return loanRepo.save(loan);
     }
 

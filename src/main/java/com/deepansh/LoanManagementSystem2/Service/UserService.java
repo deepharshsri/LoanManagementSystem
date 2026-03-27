@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import com.deepansh.LoanManagementSystem2.Entity.ApprovalWorkflow;
@@ -23,8 +24,12 @@ public class UserService {
     @Autowired
     LoanService loanService;
 
-    public List<Loan> getAllLoans(Long userId){
-       return loanService.getAllLoans(userId);    
+    public List<Loan> getAllLoans(String username){
+       
+       User user= userRepository.findByUsername(username);
+
+       return loanService.getAllLoans(user.getId());
+      
     }
 
     public void saveUser(User user) {
@@ -39,9 +44,9 @@ public class UserService {
         userRepository.deleteById(userId);
     }
     
-    public Loan applyLoan(Long userId,Long loanTypeId,int amount    ){
-        return loanService.requestLoan(userId, loanTypeId, amount);
-    }
+    // public Loan applyLoan(Long userId,Long loanTypeId,int amount    ){
+    //     return loanService.requestLoan(userId, loanTypeId, amount);
+    // }
     
  
 

@@ -16,7 +16,7 @@ import com.deepansh.LoanManagementSystem2.Entity.LoanType;
 import com.deepansh.LoanManagementSystem2.Service.LoanTypeService;
 
 @RestController
-@RequestMapping("/api/loanType")
+@RequestMapping("/api/loans/types")
 public class loanTypeController {
     
     @Autowired

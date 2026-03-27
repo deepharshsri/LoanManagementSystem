@@ -4,18 +4,13 @@ import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
-
 import com.deepansh.LoanManagementSystem2.Auth.AuthDetailService;
-import com.deepansh.LoanManagementSystem2.Auth.AuthDetails;
-
-import io.jsonwebtoken.Jwt;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
@@ -46,8 +41,8 @@ public class AuthService {
         return Jwts.builder()
             .setClaims(claims)
             .setSubject(userDetails.getUsername())
-            .setIssuedAt(new Date(System.currentTimeMillis()))
-            .setExpiration(new Date(System.currentTimeMillis()))
+            .setIssuedAt(new Date())
+            .setExpiration(new Date(System.currentTimeMillis()+86400000))
             .signWith(getSignKey(),SignatureAlgorithm.HS256)
             .compact();
     }

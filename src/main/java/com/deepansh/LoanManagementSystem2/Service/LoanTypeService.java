@@ -33,8 +33,8 @@ public class LoanTypeService {
         return loanTypeOptional.map((loan)->{
 
             Optional.ofNullable( loanType.getDescription()).ifPresent(des->loan.setDescription(des));
-            Optional.ofNullable(loanType.getTenure()).ifPresent(tenure->loan.setTenure(tenure));            
-            Optional.ofNullable(loanType.getInterestRate()).ifPresent(ir->loan.setInterestRate(ir));
+            // Optional.ofNullable(loanType.get()).ifPresent(tenure->loan.setTenure(tenure));            
+            Optional.ofNullable(loanType.getRate()).ifPresent(ir->loan.setRate(ir));
             Optional.ofNullable(loanType.getMaxAmount()).ifPresent(ma->loan.setMaxAmount(ma));            
             Optional.ofNullable(loanType.getMinAmount()).ifPresent(ma->loan.setMinAmount(ma));
             return loanTypeRepo.save(loan);

@@ -33,7 +33,7 @@ private String documentNumber;
 @JoinColumn(name = "user_id")
 private User user;
 
-@ManyToMany(mappedBy="documents" )
-private List<Loan> loan;
+// @ManyToMany(mappedBy="documents" )
+// private List<Loan> loan;
 
 }

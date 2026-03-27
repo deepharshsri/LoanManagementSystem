@@ -14,13 +14,13 @@ import com.deepansh.LoanManagementSystem2.Auth.Login;
 import com.deepansh.LoanManagementSystem2.Service.AuthService;
 
 @RestController
-@RequestMapping("/api/auth/login")
+@RequestMapping("/api/auth")
 public class authController {
     
      @Autowired
      AuthService authService;
 
-     @PostMapping
+     @PostMapping("/login")
      public AuthResponse login(@RequestBody Login login){
         
         //authenticate the user

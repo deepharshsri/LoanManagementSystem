@@ -1,4 +1,6 @@
+import axios from "axios";
 import { useState, useEffect, useRef } from "react";
+
 
 /* ─── THEME ──────────────────────────────────────────────────────────── */
 const C = {
@@ -21,17 +23,7 @@ const MOCK_USERS = [
   { id:4, name:"Deepansh Gupta",  username:"authorizer", password:"authorizer123", role:"authorizer" },
 ];
 
-/* ─── CONSTANTS ──────────────────────────────────────────────────────── */
-const LOAN_TYPES = [
-  { id:"salary",  label:"Salary Loan",     icon:"💼", mult:20, desc:"Based on net monthly salary",  rate:10.5 },
-  { id:"itr",     label:"ITR Loan",         icon:"📄", mult:15, desc:"Self-employed / business",      rate:11.5 },
-  { id:"pension", label:"Pension Loan",     icon:"🏛️", mult:15, desc:"For retired pensioners",        rate:9.5  },
-  { id:"agri",    label:"Agriculture Loan", icon:"🌾", mult:10, desc:"Against agricultural land",     rate:7.0  },
-  { id:"housing", label:"Housing Loan",     icon:"🏠", mult:80, desc:"Flats & property purchase",     rate:8.5  },
-  { id:"car",     label:"Car Loan",         icon:"🚗", mult:90, desc:"Up to 90% of vehicle price",    rate:9.0  },
-  { id:"bike",    label:"Bike Loan",        icon:"🏍️", mult:85, desc:"Two-wheeler financing",          rate:12.0 },
-  { id:"gold",    label:"Gold Loan",        icon:"✨", mult:75, desc:"Against gold ornaments",         rate:8.0  },
-];
+
 
 const STAGES = [
   "Application Received",
@@ -42,16 +34,7 @@ const STAGES = [
   "Amount Disbursed",
 ];
 
-const INITIAL_APPS = [
-  { id:"LN2024001", applicant:"Rajesh Kumar",  type:"Salary Loan",  amount:500000,  status:"pending",      date:"2024-03-10", salary:45000, score:742, risk:"Low",    flags:[],                                                 stage:0 },
-  { id:"LN2024002", applicant:"Priya Sharma",  type:"Housing Loan", amount:3500000, status:"under_review", date:"2024-03-09", salary:85000, score:801, risk:"Low",    flags:[],                                                 stage:2 },
-  { id:"LN2024003", applicant:"Mohammed Ali",  type:"Gold Loan",    amount:120000,  status:"approved",     date:"2024-03-08", salary:null,  score:695, risk:"Medium", flags:["No income proof"],                                stage:4 },
-  { id:"LN2024004", applicant:"Sunita Devi",   type:"Pension Loan", amount:200000,  status:"rejected",     date:"2024-03-07", salary:18000, score:580, risk:"High",   flags:["Low credit score","High EMI ratio"],              stage:1 },
-  { id:"LN2024005", applicant:"Amit Patel",    type:"Car Loan",     amount:750000,  status:"pending",      date:"2024-03-11", salary:60000, score:768, risk:"Low",    flags:[],                                                 stage:0 },
-  { id:"LN2024006", applicant:"Ravi Dubey",    type:"ITR Loan",     amount:1200000, status:"pending",      date:"2024-03-12", salary:95000, score:490, risk:"High",   flags:["Score < 500","Multiple inquiries","ITR mismatch"],stage:0 },
-  { id:"LN2024007", applicant:"Neha Singh",    type:"Bike Loan",    amount:95000,   status:"disbursed",    date:"2024-03-06", salary:32000, score:720, risk:"Low",    flags:[],                                                 stage:5 },
-  { id:"LN2024008", applicant:"Deepak Verma",  type:"Salary Loan",  amount:300000,  status:"under_review", date:"2024-03-13", salary:38000, score:655, risk:"Medium", flags:["Existing loan detected"],                         stage:2 },
-];
+
 
 const REDIS_KEYS = [
   { key:"cibil:LN2024001",          value:"742",                        ttl:"3580s", type:"STRING",  hit:true  },
@@ -371,8 +354,23 @@ function ApplyLoan({ onNotify }) {
   const [tenure,setTenure] = useState(24);
   const [tab,setTab]       = useState("form");
   const [done,setDone]     = useState(false);
+  
+  const [loanTypes, setLoanTypes] = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState(null);
+    useEffect(() => {
+    fetch("http://localhost:8080/api/loans/types")
+      .then(res => res.json())
+      .then(data => {
+        setLoanTypes(data);  // saves loan types from your database
+        setLoading(false);
+      })
+      .catch(err => {
+        setError("Could not load loan types.");
+        setLoading(false);
+      });
+  }, []);
   const set=(k,v)=>setForm(p=>({...p,[k]:v}));
-
   const ea=(()=>{ if(!lt)return 0; const base=parseFloat(form.income)||0; return ["salary","pension","itr"].includes(lt.id)?base*lt.mult:base*lt.mult/100; })();
   const emi=calcEMI(ea,lt?.rate||10,tenure);
   const loanAmt=parseFloat(form.loanAmt)||ea;
@@ -390,16 +388,17 @@ function ApplyLoan({ onNotify }) {
 
   return (
     <div>
-      <Title sub="AI-powered application with real-time eligibility & EMI calculation">📝 Apply for a Loan</Title>
+      <Title >📝 Apply for a Loan</Title>
       {step===0&&(
         <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:14 }}>
-          {LOAN_TYPES.map(item=>(
+          {loading && <p>Loading loan types...</p>}
+          {loanTypes.map(item=>(
             <div key={item.id} onClick={()=>{setLt(item);setStep(1);}} style={{ background:C.white, borderRadius:16, padding:20, border:`1px solid ${C.gray100}`, cursor:"pointer", transition:"all 0.2s" }}
               onMouseEnter={e=>{e.currentTarget.style.borderColor=C.navy;e.currentTarget.style.transform="translateY(-3px)";}}
               onMouseLeave={e=>{e.currentTarget.style.borderColor=C.gray100;e.currentTarget.style.transform="none";}}>
               <div style={{ fontSize:34, marginBottom:10 }}>{item.icon}</div>
-              <div style={{ fontWeight:600, color:C.navy, fontSize:14, marginBottom:4 }}>{item.label}</div>
-              <div style={{ fontSize:11, color:C.gray500, marginBottom:8 }}>{item.desc}</div>
+              <div style={{ fontWeight:600, color:C.navy, fontSize:14, marginBottom:4 }}>{item.lable}</div>
+              <div style={{ fontSize:11, color:C.gray500, marginBottom:8 }}>{item.description}</div>
               <div style={{ fontSize:11, color:C.gold, fontWeight:600 }}>{item.rate}% p.a.</div>
             </div>
           ))}
@@ -805,6 +804,14 @@ function RedisPanel() {
 ═══════════════════════════════════════════════════════════════════════ */
 function MyLoans({ apps }) {
   const [sel,setSel]=useState(null);
+    if (!Array.isArray(apps)) {
+    console.log("apps is not array:", apps);
+    return <div>Loading...</div>;
+  }
+
+  if (apps.length === 0) {
+    return <div>No loans found</div>;
+  }
   return (
     <div>
       <Title sub="Track all your submitted loan applications in real-time">📋 My Applications</Title>
@@ -813,7 +820,7 @@ function MyLoans({ apps }) {
           {apps.slice(0,4).map(app=>(
             <div key={app.id} onClick={()=>setSel(sel?.id===app.id?null:app)}
               style={{ background:sel?.id===app.id?C.navy:C.white, borderRadius:14, padding:16, marginBottom:12, border:`1px solid ${sel?.id===app.id?C.navy:C.gray100}`, cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center", transition:"all 0.2s" }}>
-              <div><div style={{ fontWeight:600, color:sel?.id===app.id?C.white:C.navy }}>{app.type}</div><div style={{ fontSize:12, color:sel?.id===app.id?"rgba(255,255,255,0.5)":C.gray500 }}>{app.id} · {app.date}</div><div style={{ marginTop:6 }}><Badge status={app.status}/></div></div>
+              <div><div style={{ fontWeight:600, color:sel?.id===app.id?C.white:C.navy }}>{app.loanName}</div><div style={{ fontSize:12, color:sel?.id===app.id?"rgba(255,255,255,0.5)":C.gray500 }}>{app.id} · {app.date}</div><div style={{ marginTop:6 }}><Badge status={app.status}/></div></div>
               <div style={{ textAlign:"right" }}><div style={{ fontWeight:700, fontSize:20, color:sel?.id===app.id?C.gold:C.navy }}>{fmtINR(app.amount)}</div><div style={{ fontSize:12, color:sel?.id===app.id?"rgba(255,255,255,0.4)":C.gray500, marginTop:4 }}>CIBIL: {app.score}</div></div>
             </div>
           ))}
@@ -851,10 +858,33 @@ function MyLoans({ apps }) {
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [page,setPage]               = useState("analytics");
-  const [apps,setApps]               = useState(INITIAL_APPS);
+  const [apps,setApps]               = useState([]);
   const [toast,setToast]             = useState(null);
   const notify = msg => setToast(msg);
+  
+const fetchApps = async () => {
+  try {
+    const endpoint =
+      currentUser?.role === "user"
+        ? "/api/loans/my"   // 👤 only user's loans
+        : "/api/loans/all"; // 👨‍💼 admin/all roles
 
+    const res = await axios.get(
+      `http://localhost:8080${endpoint}`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        }
+      }
+    );
+
+    setApps(res.data);
+
+  } catch (err) {
+    console.error("API error:", err);
+  }
+};
+   
   // Restore session on reload
   useEffect(()=>{
     const saved = localStorage.getItem("user");
@@ -864,6 +894,11 @@ export default function App() {
       setPage(u.role==="user"?"apply":"analytics");
     }
   },[]);
+  useEffect(() => {
+  if (currentUser) {
+    fetchApps();
+  }
+}, [currentUser]);
 
   function handleLogin(user) {
     setCurrentUser(user);

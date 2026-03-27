@@ -16,6 +16,8 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Entity
 @Data
 @Builder
@@ -27,13 +29,17 @@ public class Loan {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    private int loanAmount;
-    private String loanStatus;
+    private Long amount;
 
+    private String status;
+    
     @ManyToOne
     @JoinColumn (name = "user_id")
+    @JsonIgnore
     private User user;
-
+    
+    private String loanName;
+    
     @ManyToOne
     @JoinColumn (name = "loan_type_id")
     private LoanType loanType; 
