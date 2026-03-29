@@ -27,11 +27,18 @@ public class Loan {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    
-    private Long amount;
-
-    private String status;
+    private Long loanTypeId;
+    private String applicantName;
+    private String mobile;
+    private String pan;
+    private String dob;
+    private Integer income; 
+    private String employer;
+    private String empType;
+    private String tenure;
+    private Integer eligibleAmount;
+    private Integer emi;
+  
     
     @ManyToOne
     @JoinColumn (name = "user_id")

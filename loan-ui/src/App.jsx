@@ -33,7 +33,16 @@ const STAGES = [
   "Agreement Signed",
   "Amount Disbursed",
 ];
-
+const LOAN_ICONS = {
+  salary:  { icon:"💼"},
+  itr:     { icon:"📄"},
+  pension: { icon:"🏛️"},
+  agri:    { icon:"🌾"},
+  housing: { icon:"🏠"},
+  car:     { icon:"🚗"},
+  bike:    { icon:"🏍️"},
+  gold:    { icon:"✨"},
+};
 
 
 const REDIS_KEYS = [
@@ -358,18 +367,140 @@ function ApplyLoan({ onNotify }) {
   const [loanTypes, setLoanTypes] = useState([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
+  const [emiDone, setEmiDone]   = useState(false);
+  const [kycDone, setKycDone]   = useState(false);
+  const [mobileVerified, setMobileVerified] = useState(false);
     useEffect(() => {
     fetch("http://localhost:8080/api/loans/types")
       .then(res => res.json())
       .then(data => {
-        setLoanTypes(data);  // saves loan types from your database
+         const enriched = data.map(lt => ({
+    ...lt,
+    icon: LOAN_ICONS[lt.id]?.icon || "🏦",   // ← adds icon by id
+// ← adds desc by id
+  }));
+        setLoanTypes(enriched);  // saves loan types from your database
         setLoading(false);
       })
       .catch(err => {
         setError("Could not load loan types.");
         setLoading(false);
       });
+      const token = localStorage.getItem("token");
+    fetch("http://localhost:8080/api/user/profile", {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      }
+    })
+    .then(res => res.json())
+    .then(data => {
+      console.log("Profile:", data);
+      set("name", data.name.substring(0, data.name.indexOf("@"))); // first name
+      set("dob",  data.dob);
+    })
+    .catch(err => console.error("Profile fetch failed:", err))
   }, []);
+  const handleSubmit = async () => {
+    if(!form.name || !form.mobile || !form.panKyc || !form.income) {
+      alert("Please fill Name, Mobile, PAN and Income!");
+      return;
+    }
+    if(!emiDone) {
+      alert("Please calculate EMI first! Go to 🧮 EMI Calc tab.");
+      return;
+    }
+    if(!kycDone) {
+      alert("Please complete KYC verification first! Go to 🪪 KYC tab.");
+      return;
+    }
+  const payload = {
+    loanTypeId: lt.id,
+    applicantName: form.name,
+    mobile: form.mobile,
+    pan: form.pan,
+    dob: form.dob,
+    income: form.income,
+    employer: form.employer,
+    empType: form.empType,
+    tenure: tenure,
+    eligibleAmount: ea,
+    emi: emi
+  };
+  try {
+    const res = await fetch("http://localhost:8080/api/loans/apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if(res.ok) {
+      setDone(true);
+      onNotify?.("🎉 Application submitted successfully!");
+    } else {
+      alert("Something went wrong!");
+    }
+  } catch(err) {
+    console.error("Submit error:", err);
+    alert("Cannot reach server. Is Spring Boot running?");
+  }
+};
+const handleSendOtp = async () => {
+  if(!form.mobile || form.mobile.length !== 10) {
+    alert("Please enter valid 10 digit mobile number!");
+    return;
+  }
+  try {
+    const token = localStorage.getItem("token"); // ← get JWT
+    const res = await fetch("http://localhost:8080/api/otp/send", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json" ,
+        "Authorization": `Bearer ${token}`},
+      body: JSON.stringify({ mobile: form.mobile })
+    });
+    const data = await res.json();
+    if(res.ok) {
+      set("otpSent", true);
+      alert("OTP sent! Check your Spring Boot console.");
+    } else {
+      alert(data.message);
+    }
+  } catch(err) {
+    alert("Cannot reach server. Is Spring Boot running?");
+  }
+};
+
+const handleVerifyOtp = async () => {
+  if(!form.otp) {
+    alert("Please enter OTP!");
+    return;
+  }
+  try {
+    const token = localStorage.getItem("token"); // ← get JWT
+    const res = await fetch("http://localhost:8080/api/otp/verify", {
+      method: "POST",
+      headers: { 
+
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+       },
+      body: JSON.stringify({ mobile: form.mobile, otp: form.otp })
+    });
+    const data = await res.json();
+    if(data.verified) {
+      setMobileVerified(true);
+      set("otpSent", false);
+      alert("✅ Mobile verified successfully!");
+    } else {
+      alert("❌ " + data.message);
+    }
+  } catch(err) {
+    alert("Cannot reach server!");
+  }
+};
+
+// ← already exists
   const set=(k,v)=>setForm(p=>({...p,[k]:v}));
   const ea=(()=>{ if(!lt)return 0; const base=parseFloat(form.income)||0; return ["salary","pension","itr"].includes(lt.id)?base*lt.mult:base*lt.mult/100; })();
   const emi=calcEMI(ea,lt?.rate||10,tenure);
@@ -412,18 +543,44 @@ function ApplyLoan({ onNotify }) {
             <div><div style={{ fontWeight:700, color:C.navy, fontSize:16 }}>{lt.label}</div><div style={{ fontSize:12, color:C.gray500 }}>{lt.rate}% p.a.</div></div>
           </div>
           <div style={{ display:"flex", gap:8, marginBottom:20 }}>
-            {["form","calculator","kyc","ai"].map(t=>(
+            {["form","calculator","kyc"].map(t=>(
               <button key={t} onClick={()=>setTab(t)} style={{ padding:"8px 18px", borderRadius:20, border:"none", cursor:"pointer", fontSize:13, fontWeight:500, background:tab===t?C.navy:C.gray100, color:tab===t?C.white:C.gray700, transition:"all 0.2s" }}>
-                {t==="form"?"📝 Application":t==="calculator"?"🧮 EMI Calc":t==="kyc"?"🪪 KYC":"🤖 AI Advisor"}
+                {t==="form"?"📝 Application":t==="calculator"?"🧮 EMI Calc":"🪪 KYC"}
               </button>
             ))}
           </div>
           {tab==="form"&&(
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-              <Input label="Full Name" placeholder="As per Aadhaar" value={form.name||""} onChange={e=>set("name",e.target.value)} />
-              <Input label="Mobile Number" placeholder="10-digit number" value={form.mobile||""} onChange={e=>set("mobile",e.target.value)} />
-              <Input label="PAN Number" placeholder="ABCDE1234F" value={form.pan||""} onChange={e=>set("pan",e.target.value)} />
-              <Input label="Date of Birth" placeholder="DD/MM/YYYY" value={form.dob||""} onChange={e=>set("dob",e.target.value)} />
+              <Input label="Full Name" placeholder="As per Aadhaar" value={form.name||""} onChange={e=>set("name",e.target.value)} disabled={true} style={{ background:"#f5f5f5", cursor:"not-allowed" }} />
+              <div>
+  <div style={{ display:"flex", gap:8, alignItems:"flex-end" }}>
+    <Input 
+      label="Mobile Number" 
+      placeholder="10-digit number" 
+      value={form.mobile||""} 
+      onChange={e=>{ set("mobile",e.target.value); setMobileVerified(false); }} 
+    />
+    <button onClick={handleSendOtp} style={{ padding:"10px 16px", borderRadius:10, background:mobileVerified?C.green:C.navy, color:C.white, border:"none", cursor:"pointer", fontWeight:600, fontSize:13, whiteSpace:"nowrap" }}>
+      {mobileVerified?"✅ Verified":"Send OTP"}
+    </button>
+  </div>
+
+  {/* OTP input appears after Send OTP clicked */}
+  {form.otpSent && !mobileVerified &&(
+    <div style={{ display:"flex", gap:8, marginTop:8 }}>
+      <Input 
+        label="Enter OTP" 
+        placeholder="Check Spring Boot console" 
+        value={form.otp||""} 
+        onChange={e=>set("otp",e.target.value)} 
+      />
+      <button onClick={handleVerifyOtp} style={{ padding:"10px 16px", borderRadius:10, background:C.navy, color:C.white, border:"none", cursor:"pointer", fontWeight:600, fontSize:13 }}>
+        Verify
+      </button>
+    </div>
+  )}
+</div>
+              <Input label="Date of Birth" placeholder="DD/MM/YYYY" value={form.dob||""} onChange={e=>set("dob",e.target.value)} disabled={true} style={{ background:"#f5f5f5", cursor:"not-allowed" }} />
               <Input label={lt.id==="pension"?"Monthly Pension (₹)":lt.id==="itr"?"Annual Income (₹)":"Monthly Salary (₹)"} type="number" placeholder="Amount in ₹" value={form.income||""} onChange={e=>set("income",e.target.value)} />
               <Input label="Employer / Business" placeholder="Organisation name" value={form.employer||""} onChange={e=>set("employer",e.target.value)} />
               <Field label={`Loan Tenure: ${tenure} months`}>
@@ -441,9 +598,7 @@ function ApplyLoan({ onNotify }) {
                   <div style={{ textAlign:"right" }}><div style={{ fontSize:12, color:C.green }}>Monthly EMI</div><div style={{ fontSize:20, fontWeight:700, color:C.green }}>{fmtINR(emi)}</div></div>
                 </div>
               )}
-              <div style={{ gridColumn:"1/-1" }}>
-                <button onClick={()=>{setDone(true);onNotify?.("🎉 Application submitted successfully!");}} style={{ width:"100%", padding:14, borderRadius:12, background:C.navy, color:C.white, border:"none", cursor:"pointer", fontWeight:700, fontSize:15 }}>Submit Application →</button>
-              </div>
+             
             </div>
           )}
           {tab==="calculator"&&(
@@ -458,6 +613,8 @@ function ApplyLoan({ onNotify }) {
                 <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:C.gray300, marginTop:4 }}><span>6 months</span><span>30 years</span></div>
               </Card>
               {cEmi>0&&(
+                <>
+                {!emiDone && setEmiDone(true)}
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
                   {[{label:"Monthly EMI",value:fmtINR(cEmi),h:true},{label:"Total Payable",value:fmtINR(cEmi*tenure)},{label:"Total Interest",value:fmtINR(cEmi*tenure-loanAmt)}].map((c,i)=>(
                     <div key={i} style={{ background:c.h?C.navy:C.gray50, borderRadius:12, padding:16, textAlign:"center" }}>
@@ -466,6 +623,7 @@ function ApplyLoan({ onNotify }) {
                     </div>
                   ))}
                 </div>
+                </>
               )}
               <div style={{ background:C.amberBg, borderRadius:10, padding:12, fontSize:12, color:C.amber }}>⚠️ Rate: {lt.rate}% p.a. — Final rate subject to CIBIL score and RBI guidelines.</div>
             </div>
@@ -474,24 +632,61 @@ function ApplyLoan({ onNotify }) {
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, maxWidth:700 }}>
               <Card style={{ gridColumn:"1/-1", background:C.blueBg, border:`1px solid ${C.blue}30` }}>
                 <div style={{ fontSize:13, color:C.blue, fontWeight:600, marginBottom:4 }}>🔐 KYC Verification</div>
-                <div style={{ fontSize:12, color:C.gray700 }}>Documents verified via DigiLocker API. Aadhaar OTP e-KYC. AES-256 encryption.</div>
               </Card>
-              {[{label:"Aadhaar Number",ph:"XXXX XXXX XXXX",k:"aadhaar"},{label:"PAN Number",ph:"ABCDE1234F",k:"panKyc"},{label:"Voter ID (optional)",ph:"ABC1234567",k:"voter"},{label:"Passport (optional)",ph:"A1234567",k:"passport"}].map(f=>(
+              {[{label:"Aadhaar Number",ph:"XXXX XXXX XXXX",k:"aadhaar"},{label:"PAN Number",ph:"ABCDE1234F",k:"panKyc"}].map(f=>(
                 <Input key={f.k} label={f.label} placeholder={f.ph} value={form[f.k]||""} onChange={e=>set(f.k,e.target.value)} />
               ))}
               <div style={{ gridColumn:"1/-1" }}>
-                <button onClick={()=>set("kycDone",true)} style={{ width:"100%", padding:12, borderRadius:12, background:form.kycDone?C.green:C.navy, color:C.white, border:"none", cursor:"pointer", fontWeight:600, fontSize:14 }}>
-                  {form.kycDone?"✅ KYC Verified!":"Verify via Aadhaar OTP →"}
-                </button>
+                <button onClick={async ()=>{
+  if(!form.aadhaar || !form.panKyc) {
+    alert("Please enter Aadhaar and PAN number!");
+    return;
+  }
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch("http://localhost:8080/api/kyc/verify", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ aadhaar: form.aadhaar, pan: form.panKyc })
+    });
+    const data = await res.json();
+    
+    console.log("KYC Response:", data); // ← check F12 console
+    if(data.verified) {
+      set("kycDone", true);
+      setKycDone(true);
+      alert("✅ " + data.message);
+    } else {
+      alert("❌ " + data.message);
+    }
+  } catch(err) {
+    alert("Cannot reach server. Is Spring Boot running?");
+  }
+}} style={{ width:"100%", padding:12, borderRadius:12, background:form.kycDone?C.green:C.navy, color:C.white, border:"none", cursor:"pointer", fontWeight:600, fontSize:14 }}>
+  {form.kycDone?"✅ KYC Verified!":"Verify via Aadhaar OTP →"}
+</button>
               </div>
               {form.kycDone&&(
-                <div style={{ gridColumn:"1/-1", background:C.greenBg, borderRadius:12, padding:14, display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
-                  {["Aadhaar Verified ✅","PAN Linked ✅","Face Match ✅","Address Confirmed ✅","DigiLocker Synced ✅","CKYC Updated ✅"].map((t,i)=><div key={i} style={{ fontSize:12, color:C.green, fontWeight:500 }}>{t}</div>)}
-                </div>
+                <>
+                 <div style={{ gridColumn:"1/-1", background:C.greenBg, borderRadius:12, padding:14, display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+      {["Aadhaar Verified ✅","PAN Linked ✅","Mobile Verified ✅"].map((t,i)=><div key={i} style={{ fontSize:12, color:C.green, fontWeight:500 }}>{t}</div>)}
+    </div>
+
+    {/* ← ADD THIS SUBMIT BUTTON */}
+    <div style={{ gridColumn:"1/-1", marginTop:8 }}>
+      <button onClick={handleSubmit} style={{ width:"100%", padding:14, borderRadius:12, background:C.navy, color:C.white, border:"none", cursor:"pointer", fontWeight:700, fontSize:15 }}>
+        Submit Application →
+      </button>
+    </div>
+    </>
+               
               )}
             </div>
           )}
-          {tab==="ai"&&<AIChat ctx={`User applying for ${lt.label} at ${lt.rate}% interest`} />}
+         
         </div>
       )}
     </div>

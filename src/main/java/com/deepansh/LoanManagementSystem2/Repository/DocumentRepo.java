@@ -20,4 +20,5 @@ public interface DocumentRepo extends JpaRepository<Document, Long> {
      
     public User findUserByDocumentNumber(String documentNumber);
    
+    public List<Document> findByUserId(Long userId);
 }
