@@ -11,10 +11,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import com.deepansh.LoanManagementSystem2.Entity.Cibil;
 import com.deepansh.LoanManagementSystem2.Entity.Document;
 import com.deepansh.LoanManagementSystem2.Entity.Loan;
 import com.deepansh.LoanManagementSystem2.Entity.LoanType;
 import com.deepansh.LoanManagementSystem2.Entity.User;
+import com.deepansh.LoanManagementSystem2.Repository.CibilRepo;
 import com.deepansh.LoanManagementSystem2.Repository.DocumentRepo;
 import com.deepansh.LoanManagementSystem2.Repository.LoanRepo;
 import com.deepansh.LoanManagementSystem2.Repository.LoanTypeRepo;
@@ -33,22 +35,31 @@ LoanTypeRepo loanTypeRepo;
 PasswordEncoder passwordEncoder;
 @Autowired
 DocumentRepo documentRepo;
+@Autowired
+CibilRepo cibilRepo;
 
 @Override
 public void run(String... args) throws Exception {
     // TODO Auto-generated method stub
-    User user=new User().builder().username("Deepansh@gmail.com")
+    User user=new User().builder().name("Deepansh").username("Deepansh@gmail.com")
                         .password(passwordEncoder.encode("Deepansh")).dob("19/04/1998")
                         .role("ROLE_USER").build();
     Document aadhar=new Document().builder().documentNumber("1234 5678 9012")
                                   .documentType("aadhaar").user(user).build();
     Document pan=new Document().builder().documentNumber("ABCDE1234F")
                                   .documentType("pan").user(user).build();                            
-    
-    userRepository.save(user);                              documentRepo.saveAll(List.of(aadhar,pan));
+    userRepository.save(user); 
+    documentRepo.saveAll(List.of(aadhar,pan));
     user.setDocuments(List.of(aadhar,pan));
+    Cibil cibil=new Cibil().builder().score(750).pan("ABCDE1234F").user(user).build();
+    cibilRepo.save(cibil);
+     
+    
+    user.setCibil(cibil); 
+    
+    
     userRepository.save(user);
-   LoanType loanType1=new LoanType().builder().id("salary").lable("Salary Loan")
+    LoanType loanType1=new LoanType().builder().id("salary").lable("Salary Loan")
                                    .description("Based on net monthly salary") .rate(10.0) .minAmount(500000)
                                    .build();
     LoanType loanType2=new LoanType().builder().id("itr").lable("ITR Loan")
@@ -78,8 +89,18 @@ public void run(String... args) throws Exception {
     loanTypeRepo.saveAll(list);       
 
    Loan loan=new Loan().builder()
-                        .loanName(loanType1.getId())
-                         .income(500000)
+                        .loanType(loanType1)
+                        .applicantName("Deepansh")
+                        .mobile("9876543210")
+                        .pan("ABCDE1234F")
+                        .dob("19/04/1998")
+                        .income(500000.00)
+                        .employer("ABC Pvt Ltd")
+                        .empType("Salaried")
+                        .tenure("5 years")
+                        .eligibleAmount(2000000.00)
+                        .emi(41666.2)
+                        .score(user.getCibil().getScore())
                         .user(user)
                         .build();
     

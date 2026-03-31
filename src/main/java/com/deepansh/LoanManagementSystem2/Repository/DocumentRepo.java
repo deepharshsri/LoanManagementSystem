@@ -17,8 +17,10 @@ public interface DocumentRepo extends JpaRepository<Document, Long> {
     
 
     public List<Loan> findBydocumentNumber(String documentNumber);
-     
     public User findUserByDocumentNumber(String documentNumber);
-   
-    public List<Document> findByUserId(Long userId);
+    @Query("SELECT d.documentNumber FROM Document d WHERE d.user.id = :userId AND d.documentType = :type")
+    String findDocumentNumberByUserIdAndType(Long userId, String type);
+    public String findByDocumentType(String documentType, Long userId);
+    
+    public List<Document> findAllByUserId(Long userId);
 }

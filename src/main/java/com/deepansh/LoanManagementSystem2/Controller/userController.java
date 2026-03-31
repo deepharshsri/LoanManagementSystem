@@ -1,6 +1,8 @@
 package com.deepansh.LoanManagementSystem2.Controller;
 
 import com.deepansh.LoanManagementSystem2.Service.LoanService;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.deepansh.LoanManagementSystem2.DTO.LoanApplicationDto;
 import com.deepansh.LoanManagementSystem2.Entity.Loan;
 import com.deepansh.LoanManagementSystem2.Entity.User;
 import com.deepansh.LoanManagementSystem2.Service.UserService;
@@ -35,6 +38,7 @@ public class userController {
     String username=authentication.getName();
     System.out.println("username: "+username);
     System.err.println(username);
+    // return ResponseEntity.ok(new ArrayList<>());
     return ResponseEntity.ok(userService.getAllLoans(username));
   }
 
@@ -49,9 +53,10 @@ public class userController {
   }
 
   @PostMapping("/loans/apply")
-  public ResponseEntity<?> applyForLoan(Authentication authentication, Loan loanRequest){
+  public ResponseEntity<?> applyForLoan(Authentication authentication,@RequestBody LoanApplicationDto loanRequest){
     String username=authentication.getName();
     User user = userService.findByUserName(username);
+    System.out.println("loan request: "+loanRequest.getApplicantName());
     // Process the loan application using the user and request data
     // For example, you can call a service method to handle the application logic
     // loanService.applyForLoan(user, request);

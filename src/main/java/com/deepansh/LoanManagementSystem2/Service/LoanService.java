@@ -5,6 +5,7 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.deepansh.LoanManagementSystem2.DTO.LoanApplicationDto;
 import com.deepansh.LoanManagementSystem2.Entity.ApprovalWorkflow;
 import com.deepansh.LoanManagementSystem2.Entity.Loan;
 import com.deepansh.LoanManagementSystem2.Entity.LoanType;
@@ -18,7 +19,7 @@ import java.util.List;
 @Service
 public class LoanService {
     
-       @Autowired
+        @Autowired
         private UserRepository userRepository;
 
         @Autowired
@@ -33,13 +34,40 @@ public class LoanService {
         @Autowired
         private ApprovalWorkFlowService approvalWorkFlowService;
 
-       public Loan requestLoan(Long userId,Loan request){
+       public Loan requestLoan(Long userId,LoanApplicationDto request){
         Optional<User> userExist=userRepository.findById(userId);
-        Optional<LoanType> loanType=loanTypeRepository.findById(request.getLoanType().getId());
- 
-        
+        Optional<LoanType> loanType=loanTypeRepository.findById(request.getLoanTypeId()); 
+        //  System.out.println("user exist: "+userExist.get());
+        if(userExist.isEmpty()){
+            throw new RuntimeException("user not found");
+        }
+        if(loanType.isEmpty()){
+            throw new RuntimeException("loan type not found");
+        }
+        boolean exist = userExist.get().getLoans().stream().anyMatch(loan->loan.getLoanType().getId().equals(request.getLoanTypeId()));
+        if(exist){
+            // want front end to show error message that loan of this type already exist for the user
+            System.out.println("Loan of this type already exists for the user");
+            throw new RuntimeException("Loan of this type already exists for the user");
+        }
+        Loan l1=loanType.map(it->{
+            return Loan.builder()
+            .applicantName(request.getApplicantName())
+            .mobile(request.getMobile())
+            .pan(request.getPan())
+            .dob(request.getDob())
+            .income(request.getIncome())
+            .employer(request.getEmployer())
+            .empType(request.getEmpType())
+            .tenure(request.getTenure())
+            .eligibleAmount(request.getEligibleAmount())
+            .emi(request.getEmi())
+            .user(userExist.get())
+            .loanType(it)
+            .build();
+        }).orElseThrow(()-> new RuntimeException("Loan Type not found"));
     //    approvalWorkFlowService.createWorkFlow(loanTypeId);
-       return loanRepo.save(request);
+        return loanRepo.save(l1);
   
     }
 

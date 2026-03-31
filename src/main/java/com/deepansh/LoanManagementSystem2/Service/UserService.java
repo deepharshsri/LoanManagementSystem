@@ -1,5 +1,7 @@
 package com.deepansh.LoanManagementSystem2.Service;
 
+import com.deepansh.LoanManagementSystem2.Repository.CibilRepo;
+import com.deepansh.LoanManagementSystem2.Repository.LoanRepo;
 import com.deepansh.LoanManagementSystem2.Service.LoanService;
 
 import java.util.HashMap;
@@ -25,6 +27,8 @@ import com.deepansh.LoanManagementSystem2.Repository.UserRepository;
 @Service
 public class UserService {
     
+
+    
     @Autowired  
     private UserRepository userRepository;     
 
@@ -34,11 +38,32 @@ public class UserService {
     @Autowired
     DocumentRepo documentRepo;
 
+    @Autowired
+    CibilRepo cibilRepo;
+
+    @Autowired
+    LoanRepo loanRepo;
+
     public List<Loan> getAllLoans(String username){
        
        User user= userRepository.findByUsername(username);
 
-       return loanService.getAllLoans(user.getId());
+       String pan=documentRepo.findDocumentNumberByUserIdAndType(user.getId(),"pan");
+    //    System.out.println("documents: "+documents.get(0));
+    // System.out.println("pan: "+pan);
+  
+       int score=cibilRepo.findScoreByPan(pan);;
+  
+       
+       List<Loan> loans = loanService.getAllLoans(user.getId());
+
+       for (Loan loan : loans) {
+        loan.setScore(score);
+       }
+
+       loanRepo.saveAll(loans);
+
+       return loans;
       
     }
 
@@ -56,11 +81,12 @@ public class UserService {
 
     public boolean verifyKYC(String username, Map<String,String> request) {
      User user = userRepository.findByUsername(username);
-     List<Document> document=documentRepo.findByUserId(user.getId());
-     Map<String, String> map = new HashMap<>();
-     document.forEach(d -> {
-          map.put(d.getDocumentType(), d.getDocumentNumber());
-     });
+     List<Document> documents= documentRepo.findAllByUserId(user.getId());
+        Map<String,String> map = new HashMap<>();
+        for(Document document: documents){
+            map.put(document.getDocumentType(), document.getDocumentNumber());
+        }
+    
      System.out.println("map: "+map);
      System.out.println("request: "+request);
      System.out.println("map.get(aadhaar): "+map.get("aadhaar"));

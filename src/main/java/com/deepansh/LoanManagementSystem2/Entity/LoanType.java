@@ -12,6 +12,8 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 
 @Builder
 @Entity
@@ -29,7 +31,8 @@ public class LoanType {
     private Integer mult;
     private Integer minAmount;
     private Integer maxAmount; 
-
+    
+    @JsonIgnore
     @OneToMany(mappedBy = "loanType")
     private List<Loan> loans;
 }

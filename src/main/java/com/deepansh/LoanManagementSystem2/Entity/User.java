@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,16 +31,20 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    String name;
+    private String name;
     private String username;
     private String password;
-    String dob;
+    private String dob;
     private String role;
-
+    
+    
     @OneToMany(mappedBy = "user")
     private List<Loan> loans;
 
     @OneToMany(mappedBy = "user")
     private List<Document> documents;
+
+    @OneToOne(mappedBy = "user")
+    private Cibil cibil;
 }
  

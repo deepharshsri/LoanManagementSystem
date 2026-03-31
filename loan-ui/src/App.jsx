@@ -386,7 +386,7 @@ function ApplyLoan({ onNotify }) {
         setError("Could not load loan types.");
         setLoading(false);
       });
-      const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token");
     fetch("http://localhost:8080/api/user/profile", {
       method: "GET",
       headers: {
@@ -419,7 +419,7 @@ function ApplyLoan({ onNotify }) {
     loanTypeId: lt.id,
     applicantName: form.name,
     mobile: form.mobile,
-    pan: form.pan,
+    pan: form.panKyc,
     dob: form.dob,
     income: form.income,
     employer: form.employer,
@@ -429,9 +429,11 @@ function ApplyLoan({ onNotify }) {
     emi: emi
   };
   try {
-    const res = await fetch("http://localhost:8080/api/loans/apply", {
+      const token = localStorage.getItem("token");
+      const res = await fetch("http://localhost:8080/api/loans/apply", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
     if(res.ok) {

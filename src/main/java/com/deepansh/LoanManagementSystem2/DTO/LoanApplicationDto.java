@@ -1,5 +1,14 @@
 package com.deepansh.LoanManagementSystem2.DTO;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 public class LoanApplicationDto {
 
     String loanTypeId;
@@ -7,11 +16,12 @@ public class LoanApplicationDto {
     String mobile;
     String pan;
     String dob;
-    String income;
+    Double income;
     String employer;
     String empType;
-    String Tenure;
-    String eligibleAmount;
-    String emi;
+    String tenure;
+    Double eligibleAmount;
+    Double emi;
+
     
 }
