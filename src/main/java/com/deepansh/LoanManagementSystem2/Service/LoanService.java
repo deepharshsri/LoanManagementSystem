@@ -95,7 +95,7 @@ public class LoanService {
      //
     public Loan updateLoanStatus(Long loanId,String status){
         Loan loan=loanRepo.findById(loanId).get();
-        // loan.setStatus(status);
+        loan.setStatus(status);
         return loanRepo.save(loan);
     }
 

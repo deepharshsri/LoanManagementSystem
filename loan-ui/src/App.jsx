@@ -238,23 +238,30 @@ function AIChat({ ctx="" }) {
   const endRef = useRef(null);
   useEffect(()=>{ endRef.current?.scrollIntoView({ behavior:"smooth" }); },[msgs]);
 
-  async function send() {
-    if (!input.trim()) return;
-    const txt = input.trim(); setInput("");
-    setMsgs(p=>[...p,{ role:"user", text:txt }]);
-    setLoading(true);
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json", "x-api-key":process.env.REACT_APP_ANTHROPIC_KEY||"", "anthropic-version":"2023-06-01" },
-        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1000, system:`You are an expert AI Loan Advisor for an Indian fintech bank. Help with loan eligibility, EMI, ITR, CIBIL, KYC, RBI guidelines. Be concise and friendly. ${ctx}`, messages:msgs.concat({role:"user",text:txt}).map(m=>({role:m.role,content:m.text})) })
-      });
-      const data = await res.json();
-      setMsgs(p=>[...p,{ role:"assistant", text:data.content?.[0]?.text||"Unable to respond. Please check your API key in .env" }]);
-    } catch { setMsgs(p=>[...p,{ role:"assistant", text:"Connection error. Add REACT_APP_ANTHROPIC_KEY in .env file." }]); }
-    setLoading(false);
+async function send() {
+  if (!input.trim()) return;
+  const txt = input.trim(); setInput("");
+  setMsgs(p=>[...p,{ role:"user", text:txt }]);
+  setLoading(true);
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch("http://localhost:8080/api/ai/chat", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        prompt: txt  // ← sends prompt to Spring Boot
+      })
+    });
+    const data = await res.json();
+    setMsgs(p=>[...p,{ role:"assistant", text:data.text||"Unable to respond." }]);
+  } catch { 
+    setMsgs(p=>[...p,{ role:"assistant", text:"Connection error. Is Spring Boot running?" }]); 
   }
-
+  setLoading(false);
+}
   return (
     <div style={{ display:"flex", flexDirection:"column", height:440, background:C.white, borderRadius:16, border:`1px solid ${C.gray100}`, overflow:"hidden" }}>
       <div style={{ background:C.navy, padding:"14px 18px", display:"flex", alignItems:"center", gap:10 }}>
@@ -282,10 +289,10 @@ function AIChat({ ctx="" }) {
 /* ═══════════════════════════════════════════════════════════════════════
    ANALYTICS
 ═══════════════════════════════════════════════════════════════════════ */
-function Analytics({ apps }) {
+function Analytics({ apps,loanTypes }) {
   const approved = apps.filter(a=>["approved","disbursed"].includes(a.status)).length;
   const totalAmt = apps.filter(a=>["approved","disbursed"].includes(a.status)).reduce((s,a)=>s+a.amount,0);
-  const loanDist = LOAN_TYPES.map(lt=>({ label:lt.label, icon:lt.icon, count:apps.filter(a=>a.type===lt.label).length })).filter(x=>x.count>0);
+  const loanDist = (loanTypes||[]).map(lt=>({ label:lt.label, icon:lt.icon, count:apps.filter(a=>a.type===lt.label).length })).filter(x=>x.count>0); 
   const maxCount = Math.max(...loanDist.map(x=>x.count),1);
 
   return (
@@ -306,16 +313,24 @@ function Analytics({ apps }) {
           </Card>
         ))}
       </div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, marginBottom:20 }}>
-        <Card>
-          <div style={{ fontWeight:600, color:C.navy, fontSize:14, marginBottom:16 }}>📈 Loan Distribution</div>
-          {loanDist.map((lt,i)=>(
-            <div key={i} style={{ marginBottom:12 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:4 }}><span style={{ color:C.gray700 }}>{lt.icon} {lt.label}</span><span style={{ fontWeight:600, color:C.navy }}>{lt.count}</span></div>
-              <div style={{ height:8, background:C.gray100, borderRadius:4, overflow:"hidden" }}><div style={{ height:"100%", width:`${(lt.count/maxCount)*100}%`, background:C.navy, borderRadius:4, transition:"width 0.6s" }} /></div>
+     <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, marginBottom:20 }}>
+  <Card>
+    <div style={{ fontWeight:600, color:C.navy, fontSize:14, marginBottom:16 }}>📈 Loan Distribution</div>
+    {loanDist.length === 0 
+      ? <div style={{ color:C.gray500, fontSize:13 }}>No loan data yet</div>
+      : loanDist.map((lt,i)=>(
+          <div key={i} style={{ marginBottom:12 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:4 }}>
+              <span style={{ color:C.gray700 }}>{lt.icon} {lt.label}</span>
+              <span style={{ fontWeight:600, color:C.navy }}>{lt.count}</span>
             </div>
-          ))}
-        </Card>
+            <div style={{ height:8, background:C.gray100, borderRadius:4, overflow:"hidden" }}>
+              <div style={{ height:"100%", width:`${(lt.count/maxCount)*100}%`, background:C.navy, borderRadius:4, transition:"width 0.6s" }} />
+            </div>
+          </div>
+        ))
+    }
+  </Card>
         <Card>
           <div style={{ fontWeight:600, color:C.navy, fontSize:14, marginBottom:16 }}>📋 Status Pipeline</div>
           {[
@@ -356,36 +371,19 @@ function Analytics({ apps }) {
 /* ═══════════════════════════════════════════════════════════════════════
    APPLY LOAN
 ═══════════════════════════════════════════════════════════════════════ */
-function ApplyLoan({ onNotify }) {
+function ApplyLoan({ onNotify ,loanTypes}) {
+  const [loading, setLoading] = useState(false);
   const [step,setStep]     = useState(0);
   const [lt,setLt]         = useState(null);
   const [form,setForm]     = useState({});
   const [tenure,setTenure] = useState(24);
   const [tab,setTab]       = useState("form");
   const [done,setDone]     = useState(false);
-  
-  const [loanTypes, setLoanTypes] = useState([]);
-  const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
   const [emiDone, setEmiDone]   = useState(false);
   const [kycDone, setKycDone]   = useState(false);
   const [mobileVerified, setMobileVerified] = useState(false);
     useEffect(() => {
-    fetch("http://localhost:8080/api/loans/types")
-      .then(res => res.json())
-      .then(data => {
-         const enriched = data.map(lt => ({
-    ...lt,
-    icon: LOAN_ICONS[lt.id]?.icon || "🏦",   // ← adds icon by id
-// ← adds desc by id
-  }));
-        setLoanTypes(enriched);  // saves loan types from your database
-        setLoading(false);
-      })
-      .catch(err => {
-        setError("Could not load loan types.");
-        setLoading(false);
-      });
     const token = localStorage.getItem("token");
     fetch("http://localhost:8080/api/user/profile", {
       method: "GET",
@@ -821,26 +819,133 @@ function ApprovalWorkflow({ apps, setApps, role, onNotify }) {
   const [sel,setSel]         = useState(null);
   const [insight,setInsight] = useState("");
   const [loading,setLoading] = useState(false);
+  console.log("role:", role);
+  console.log("apps statuses:", apps.map(a=>a.status));
   const queue = role==="checker"?apps.filter(a=>a.status==="pending"):role==="maker"?apps.filter(a=>a.status==="under_review"):apps.filter(a=>a.status==="approved");
-
-  function update(id,status) {
+ console.log("queue:", queue);
+ async function update(id, status) {
+  try {
+    const token = localStorage.getItem("token");
+    await axios.put(
+      `http://localhost:8080/api/loans/${id}/status`,
+      { status },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
     setApps(p=>p.map(a=>a.id===id?{...a,status}:a));
     setSel(p=>p?.id===id?{...p,status}:p);
     onNotify?.(`Application ${id} → ${status.replace("_"," ").toUpperCase()}`);
+  } catch(err) {
+    console.error("Update failed:", err);
+    alert("Failed to update status!");
   }
+}
 
-  async function getInsight(app) {
-    setSel(app); setInsight(""); setLoading(true);
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method:"POST", headers:{ "Content-Type":"application/json", "x-api-key":process.env.REACT_APP_ANTHROPIC_KEY||"", "anthropic-version":"2023-06-01" },
-        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:600, system:"You are a senior bank loan officer AI. Provide: Credit Rating, Loan-to-Income Ratio, Risk level, Recommendation (Approve/Review/Reject). Be concise.", messages:[{role:"user",content:`Analyze: ${app.applicant}, ${app.type}, ₹${app.amount.toLocaleString("en-IN")}, CIBIL:${app.score}, Income:${app.salary?fmtINR(app.salary):"N/A"}, Risk:${app.risk}, Flags:${app.flags?.join(",")||"None"}`}] })
-      });
-      const data = await res.json(); setInsight(data.content?.[0]?.text||"");
-    } catch { setInsight("Add REACT_APP_ANTHROPIC_KEY in .env for AI assessment."); }
-    setLoading(false);
+async function getInsight(app) {
+  setSel(app); setInsight(""); setLoading(true);
+  console.log("App data sent to AI:", app);
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch("http://localhost:8080/api/ai/chat", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({
+      prompt: `You are a senior Indian bank loan officer. Analyze this loan application and respond in this EXACT format:
+
+📊 CREDIT RATING: [Excellent/Good/Fair/Poor]
+📉 LOAN-TO-INCOME RATIO: [X%]
+⚠️ RISK LEVEL: [🟢 Low / 🟡 Medium / 🔴 High]
+✅ RECOMMENDATION: [APPROVE / REVIEW / REJECT]
+
+📋 KEY REASONS:
+- [Reason 1]
+- [Reason 2]
+- [Reason 3]
+
+💡 SUGGESTIONS:
+- [Suggestion 1]
+- [Suggestion 2]
+
+Application Details:
+Applicant: ${app.applicant}
+Loan Type: ${app.loanName}
+Amount: ₹${app.appliedAmt?.toLocaleString("en-IN")}
+CIBIL Score: ${app.score}
+Monthly Income: ${app.income ? fmtINR(app.income) : "N/A"}
+Employer: ${app.employer}
+Employment Type: ${app.empType}
+Tenure: ${app.tenure} months
+EMI: ${app.emi ? fmtINR(app.emi) : "N/A"}`
+      })
+    });
+    const data = await res.json();
+  console.log("AI Response:", data);
+    setInsight(data.text||"");
+  } catch { 
+    setInsight("Cannot reach server. Is Spring Boot running?"); 
   }
+  setLoading(false);
+}
+function downloadPDF(app, insight) {
+  const { jsPDF } = window.jspdf || require('jspdf');
+  const doc = new jsPDF();
 
+  // Header
+  doc.setFillColor(11, 29, 58); // navy
+  doc.rect(0, 0, 210, 30, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.text("LoanSmart AI - Loan Assessment Report", 10, 20);
+
+  // Reset color
+  doc.setTextColor(0, 0, 0);
+
+  // Loan Details
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text("Loan Application Details", 10, 45);
+
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Applicant Name : ${app.applicant}`, 10, 58);
+  doc.text(`Loan Type      : ${app.type}`, 10, 66);
+  doc.text(`Loan Amount    : Rs. ${app.amount?.toLocaleString("en-IN")}`, 10, 74);
+  doc.text(`CIBIL Score    : ${app.score}`, 10, 82);
+  doc.text(`Monthly Income : Rs. ${app.salary?.toLocaleString("en-IN")}`, 10, 90);
+  doc.text(`Employer       : ${app.employer}`, 10, 98);
+  doc.text(`Employment Type: ${app.empType}`, 10, 106);
+  doc.text(`Tenure         : ${app.tenure} months`, 10, 114);
+  doc.text(`EMI            : Rs. ${app.emi?.toLocaleString("en-IN")}`, 10, 122);
+  doc.text(`Status         : ${app.status?.toUpperCase()}`, 10, 130);
+  doc.text(`Date           : ${new Date().toLocaleDateString("en-IN")}`, 10, 138);
+
+  // Divider
+  doc.setDrawColor(11, 29, 58);
+  doc.line(10, 145, 200, 145);
+
+  // AI Assessment
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text("AI Risk Assessment", 10, 155);
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+
+  // Split long insight text into lines
+  const lines = doc.splitTextToSize(insight, 185);
+  doc.text(lines, 10, 165);
+
+  // Footer
+  doc.setFontSize(9);
+  doc.setTextColor(150, 150, 150);
+  doc.text("Generated by LoanSmart AI | Confidential", 10, 285);
+  doc.text(new Date().toLocaleString("en-IN"), 150, 285);
+
+  // Save PDF
+  doc.save(`LoanReport_${app.applicant}_${new Date().toLocaleDateString("en-IN")}.pdf`);
+}
   return (
     <div>
       <Title sub={`${role==="checker"?"First-level review":role==="maker"?"Second-level approval":"Final sanction"} — AI-assisted`}>
@@ -853,11 +958,11 @@ function ApprovalWorkflow({ apps, setApps, role, onNotify }) {
           {queue.map(app=>(
             <div key={app.id} onClick={()=>getInsight(app)} style={{ background:sel?.id===app.id?C.navy:C.white, borderRadius:14, padding:16, marginBottom:10, border:`1px solid ${sel?.id===app.id?C.navy:C.gray100}`, cursor:"pointer", transition:"all 0.2s" }}>
               <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
-                <div><div style={{ fontWeight:600, fontSize:14, color:sel?.id===app.id?C.white:C.navy }}>{app.applicant}</div><div style={{ fontSize:11, color:sel?.id===app.id?"rgba(255,255,255,0.5)":C.gray500 }}>{app.id} · {app.type}</div></div>
+                <div><div style={{ fontWeight:600, fontSize:14, color:sel?.id===app.id?C.white:C.navy }}>{app.applicant}</div><div style={{ fontSize:11, color:sel?.id===app.id?"rgba(255,255,255,0.5)":C.gray500 }}>{app.id} · {app.loanName}</div></div>
                 <Badge status={app.status}/>
               </div>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <span style={{ fontSize:15, fontWeight:700, color:sel?.id===app.id?C.gold:C.navy }}>{fmtINR(app.amount)}</span>
+                <span style={{ fontSize:15, fontWeight:700, color:sel?.id===app.id?C.gold:C.navy }}>{fmtINR(app.appliedAmt)}</span>
                 <span style={{ fontSize:12, color:sel?.id===app.id?"rgba(255,255,255,0.4)":C.gray300 }}>CIBIL: {app.score}</span>
               </div>
               {app.flags?.length>0&&<div style={{ marginTop:8, display:"flex", flexWrap:"wrap", gap:4 }}>{app.flags.slice(0,2).map((f,i)=><span key={i} style={{ background:C.redBg, color:C.red, fontSize:9, fontWeight:600, padding:"2px 6px", borderRadius:10 }}>⚠ {f}</span>)}</div>}
@@ -872,7 +977,7 @@ function ApprovalWorkflow({ apps, setApps, role, onNotify }) {
                 <Badge status={sel.status}/>
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
-                {[{label:"Loan Type",value:sel.type},{label:"Amount",value:fmtINR(sel.amount)},{label:"CIBIL Score",value:sel.score},{label:"Income",value:sel.salary?fmtINR(sel.salary):"N/A"},{label:"Risk Level",value:<RiskBadge risk={sel.risk}/>},{label:"Stage",value:STAGES[sel.stage||0]}].map((item,i)=>(
+                {[{label:"Loan Type",value:sel.type},{label:"Amount",value:fmtINR(sel.appliedAmt)},{label:"CIBIL Score",value:sel.score},{label:"Income",value:sel.income?fmtINR(sel.income):"N/A"},{label:"Risk Level",value:<RiskBadge risk={sel.risk}/>},{label:"Stage",value:STAGES[sel.stage||0]}].map((item,i)=>(
                   <div key={i} style={{ background:C.gray50, borderRadius:8, padding:"10px 12px" }}><div style={{ fontSize:11, color:C.gray500, marginBottom:2 }}>{item.label}</div><div style={{ fontSize:13, fontWeight:600, color:C.navy }}>{item.value}</div></div>
                 ))}
               </div>
@@ -1001,6 +1106,7 @@ function RedisPanel() {
 ═══════════════════════════════════════════════════════════════════════ */
 function MyLoans({ apps }) {
   const [sel,setSel]=useState(null);
+  console.log("Rendering MyLoans with apps:", apps);
     if (!Array.isArray(apps)) {
     console.log("apps is not array:", apps);
     return <div>Loading...</div>;
@@ -1017,8 +1123,8 @@ function MyLoans({ apps }) {
           {apps.slice(0,4).map(app=>(
             <div key={app.id} onClick={()=>setSel(sel?.id===app.id?null:app)}
               style={{ background:sel?.id===app.id?C.navy:C.white, borderRadius:14, padding:16, marginBottom:12, border:`1px solid ${sel?.id===app.id?C.navy:C.gray100}`, cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center", transition:"all 0.2s" }}>
-              <div><div style={{ fontWeight:600, color:sel?.id===app.id?C.white:C.navy }}>{app.loanName}</div><div style={{ fontSize:12, color:sel?.id===app.id?"rgba(255,255,255,0.5)":C.gray500 }}>{app.id} · {app.date}</div><div style={{ marginTop:6 }}><Badge status={app.status}/></div></div>
-              <div style={{ textAlign:"right" }}><div style={{ fontWeight:700, fontSize:20, color:sel?.id===app.id?C.gold:C.navy }}>{fmtINR(app.amount)}</div><div style={{ fontSize:12, color:sel?.id===app.id?"rgba(255,255,255,0.4)":C.gray500, marginTop:4 }}>CIBIL: {app.score}</div></div>
+              <div><div style={{ fontWeight:600, color:sel?.id===app.id?C.white:C.navy }}>{app.type}</div><div style={{ fontSize:12, color:sel?.id===app.id?"rgba(255,255,255,0.5)":C.gray500 }}>{app.id} · {app.date}</div><div style={{ marginTop:6 }}>{app.status}</div></div>
+              <div style={{ textAlign:"right" }}><div style={{ fontWeight:700, fontSize:20, color:sel?.id===app.id?C.gold:C.navy }}>{fmtINR(app.appliedAmt)}</div><div style={{ fontSize:12, color:sel?.id===app.id?"rgba(255,255,255,0.4)":C.gray500, marginTop:4 }}>CIBIL: {app.score}</div></div>
             </div>
           ))}
         </div>
@@ -1057,15 +1163,17 @@ export default function App() {
   const [page,setPage]               = useState("analytics");
   const [apps,setApps]               = useState([]);
   const [toast,setToast]             = useState(null);
+  const [loanTypes, setLoanTypes]    = useState([]);
   const notify = msg => setToast(msg);
   
-const fetchApps = async () => {
+const fetchApps = async (loadedLoanTypes) => {
   try {
     const endpoint =
       currentUser?.role === "user"
         ? "/api/loans/my"   // 👤 only user's loans
         : "/api/loans/all"; // 👨‍💼 admin/all roles
-
+     console.log("Fetching from endpoint:", endpoint); // ← ADD THIS
+     console.log("Current role:", currentUser?.role);
     const res = await axios.get(
       `http://localhost:8080${endpoint}`,
       {
@@ -1074,11 +1182,47 @@ const fetchApps = async () => {
         }
       }
     );
-
-    setApps(res.data);
+    console.log("Raw apps from backend:", res.data);
+   
+   const mapped = res.data.map(loan => ({
+  id:        loan.id,
+  applicant: loan.applicantName || loan.applicant,  // ← handles both
+  type:      loan.loanType?.label || loan.loanName || loan.type, // ← handles both
+  appliedAmt:loan.appliedAmt, // ← handles both
+  score:     loan.score,
+  income:    loan.income,
+  status:    loan.status,
+  date:      loan.createdAt,
+  mobile:    loan.mobile,
+  pan:       loan.pan,
+  dob:       loan.dob,
+  employer:  loan.employer,
+  empType:   loan.empType,
+  tenure:    loan.tenure,
+  emi:       loan.emi,
+}));
+    console.log("Raw first loan:", res.data[0]);
+    console.log("First mapped app:", mapped[0]);
+    console.log("loanTypes:", loanTypes.map(lt=>lt.label));
+    setApps(mapped);
 
   } catch (err) {
     console.error("API error:", err);
+  }
+};
+const fetchLoanTypes = async () => {
+  try {
+    const res = await axios.get("http://localhost:8080/api/loans/types");
+    const enriched = res.data.map(lt => ({
+      ...lt,
+      icon: LOAN_ICONS[lt.id]?.icon || "🏦",
+      desc: LOAN_ICONS[lt.id]?.desc || lt.desc,
+    }));
+    setLoanTypes(enriched);
+    {page==="analytics" && <Analytics apps={apps} loanTypes={loanTypes.length>0?loanTypes:JSON.parse(localStorage.getItem("loanTypes")||"[]")}/>}
+    return enriched;
+  } catch(err) {
+    console.error("Loan types error:", err);
   }
 };
    
@@ -1091,9 +1235,13 @@ const fetchApps = async () => {
       setPage(u.role==="user"?"apply":"analytics");
     }
   },[]);
-  useEffect(() => {
+useEffect(() => {
   if (currentUser) {
-    fetchApps();
+    const init = async () => {
+      const loadedLoanTypes = await fetchLoanTypes(); // ← get return value
+      await fetchApps(loadedLoanTypes);               // ← pass directly
+    };
+    init();
   }
 }, [currentUser]);
 
@@ -1158,8 +1306,8 @@ const fetchApps = async () => {
 
       {/* Page content */}
       <main style={{ padding:"28px 32px", maxWidth:1180, margin:"0 auto", animation:"fadeUp 0.3s ease" }} key={page}>
-        {page==="analytics"  && <Analytics apps={apps}/>}
-        {page==="apply"      && <ApplyLoan onNotify={notify}/>}
+        {page==="analytics" && <Analytics apps={apps} loanTypes={loanTypes.length>0?loanTypes:JSON.parse(localStorage.getItem("loanTypes")||"[]")}/>}
+        {page==="apply"     && <ApplyLoan onNotify={notify} loanTypes={loanTypes}/>}
         {page==="myloans"    && <MyLoans apps={apps}/>}
         {page==="cibil"      && <CIBILSimulator/>}
         {page==="ai"         && <div style={{ maxWidth:700, margin:"0 auto" }}><Title sub="Personalized loan advice powered by Claude AI">🤖 AI Loan Advisor</Title><AIChat/></div>}

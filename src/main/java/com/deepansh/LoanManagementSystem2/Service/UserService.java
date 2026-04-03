@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import com.deepansh.LoanManagementSystem2.DTO.LoanResponseDTo;
 import com.deepansh.LoanManagementSystem2.Entity.ApprovalWorkflow;
 import com.deepansh.LoanManagementSystem2.Entity.Document;
 import com.deepansh.LoanManagementSystem2.Entity.Loan;
@@ -44,7 +45,7 @@ public class UserService {
     @Autowired
     LoanRepo loanRepo;
 
-    public List<Loan> getAllLoans(String username){
+    public List<LoanResponseDTo> getAllLoans(String username){
        
        User user= userRepository.findByUsername(username);
 
@@ -56,14 +57,17 @@ public class UserService {
   
        
        List<Loan> loans = loanService.getAllLoans(user.getId());
+       List<LoanResponseDTo> loanResponseDToList = loans.stream().map(loan -> 
+           new LoanResponseDTo(loan.getId(),  loan.getLoanType().getLabel(), loan.getStatus(), loan.getAppliedAmt(), score, loan.getApplicantName(), loan.getLoanType().getLabel(), loan.getIncome())
+       ).toList();
 
-       for (Loan loan : loans) {
+       for (LoanResponseDTo loan : loanResponseDToList) {
         loan.setScore(score);
        }
 
-       loanRepo.saveAll(loans);
+    //    loanRepo.saveAll(loanResponseDToList);
 
-       return loans;
+       return loanResponseDToList;
       
     }
 
@@ -85,7 +89,7 @@ public class UserService {
         Map<String,String> map = new HashMap<>();
         for(Document document: documents){
             map.put(document.getDocumentType(), document.getDocumentNumber());
-        }
+    }
     
      System.out.println("map: "+map);
      System.out.println("request: "+request);
@@ -104,7 +108,14 @@ public class UserService {
     //     return loanService.requestLoan(userId, loanTypeId, amount);
     // }
     
- 
+  public void updateLoanStatus(Long loanId, String status){
+    Optional<Loan> loan=loanRepo.findById(loanId);
+    loan.map(l->{
+        l.setStatus(status);
+        return loanRepo.save(l);
+    }).orElseThrow(()->new RuntimeException("Loan not found"));
+
+  }
 
     
 }

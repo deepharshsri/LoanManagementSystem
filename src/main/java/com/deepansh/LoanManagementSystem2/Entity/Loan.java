@@ -38,14 +38,15 @@ public class Loan {
     private String tenure;
     private Double eligibleAmount;
     private Double emi;
-  
+    private String status;
+    private Integer appliedAmt;
     
     @ManyToOne
     @JoinColumn (name = "user_id")
     @JsonIgnore
     private User user;
     
-    private String loanName;
+    
     Integer score;
 
     @ManyToOne
@@ -61,9 +62,11 @@ public class Loan {
     private List<Document> documents;
 
     @OneToMany(mappedBy = "loan")
+    @JsonIgnore
     private List<ApprovalWorkflow> approvalWorkflows;
 
     @OneToMany(mappedBy = "loan")
+    @JsonIgnore
     private List<DisbursementStage> disbursementStages;
 
 

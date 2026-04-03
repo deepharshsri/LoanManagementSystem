@@ -25,7 +25,7 @@ public class LoanType {
     
     @Id
     private String id;
-    private String lable;
+    private String label;
     private String description;
     private Double rate;
     private Integer mult;
