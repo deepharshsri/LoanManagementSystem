@@ -22,6 +22,7 @@ public class LoanApplicationDto {
     String tenure;
     Double eligibleAmount;
     Double emi;
+    Integer appliedAmt;
 
     
 }

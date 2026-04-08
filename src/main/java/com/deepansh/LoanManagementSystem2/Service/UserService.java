@@ -13,10 +13,13 @@ import javax.print.Doc;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.deepansh.LoanManagementSystem2.DTO.LoanResponseDTo;
+import com.deepansh.LoanManagementSystem2.DTO.SignUpDTO;
 import com.deepansh.LoanManagementSystem2.Entity.ApprovalWorkflow;
+import com.deepansh.LoanManagementSystem2.Entity.Cibil;
 import com.deepansh.LoanManagementSystem2.Entity.Document;
 import com.deepansh.LoanManagementSystem2.Entity.Loan;
 import com.deepansh.LoanManagementSystem2.Entity.LoanType;
@@ -45,28 +48,21 @@ public class UserService {
     @Autowired
     LoanRepo loanRepo;
 
+    @Autowired
+    PasswordEncoder passwordEnoder;
+
     public List<LoanResponseDTo> getAllLoans(String username){
        
        User user= userRepository.findByUsername(username);
-
        String pan=documentRepo.findDocumentNumberByUserIdAndType(user.getId(),"pan");
-    //    System.out.println("documents: "+documents.get(0));
-    // System.out.println("pan: "+pan);
-  
        int score=cibilRepo.findScoreByPan(pan);;
-  
-       
        List<Loan> loans = loanService.getAllLoans(user.getId());
        List<LoanResponseDTo> loanResponseDToList = loans.stream().map(loan -> 
            new LoanResponseDTo(loan.getId(),  loan.getLoanType().getLabel(), loan.getStatus(), loan.getAppliedAmt(), score, loan.getApplicantName(), loan.getLoanType().getLabel(), loan.getIncome())
        ).toList();
-
        for (LoanResponseDTo loan : loanResponseDToList) {
         loan.setScore(score);
        }
-
-    //    loanRepo.saveAll(loanResponseDToList);
-
        return loanResponseDToList;
       
     }
@@ -102,11 +98,6 @@ public class UserService {
      else return false;
   
     }
- 
-    
-    // public Loan applyLoan(Long userId,Long loanTypeId,int amount    ){
-    //     return loanService.requestLoan(userId, loanTypeId, amount);
-    // }
     
   public void updateLoanStatus(Long loanId, String status){
     Optional<Loan> loan=loanRepo.findById(loanId);
@@ -117,5 +108,41 @@ public class UserService {
 
   }
 
+  public User registerUser(SignUpDTO user){
+    System.out.println("user: "+user);
+    User newUser=User.builder()
+                    .name(user.getName())
+                    .username(user.getUsername())
+                    .password(passwordEnoder.encode(user.getPassword()))
+                    .dob(user.getDob())
+                    .role("ROLE_USER")
+                    .build();
+     userRepository.save(newUser);
+
+     Document pan=Document.builder()
+                        .documentType("pan")
+                        .documentNumber(user.getPan())
+                        .user(newUser)
+                        .build();
+    Document aadhaar=Document.builder()
+                        .documentType("aadhaar")
+                        .documentNumber(user.getAadhaar())
+                        .user(newUser)
+                        .build();
+    documentRepo.saveAll(List.of(pan,aadhaar)); 
+    Cibil cibil=Cibil.builder()
+                .pan(user.getPan())
+                .user(newUser)
+                .score(user.getCibilScore())
+                .build();
+    cibilRepo.save(cibil);
+    return newUser;
+
+  }
+
+    public boolean checkUsernameExists(String username){
+        return    userRepository.findByUsername(username) != null;
+    }
+ 
     
 }

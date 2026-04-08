@@ -16,13 +16,6 @@ const C = {
    POST /api/auth/login  { username, password }
    Returns: { token, user: { id, name, username, role } }
    ────────────────────────────────────────────────────────────────────── */
-const MOCK_USERS = [
-  { id:1, name:"Rajesh Kumar",    username:"user",       password:"user123",       role:"user"       },
-  { id:2, name:"Priya Sharma",    username:"checker",    password:"checker123",    role:"checker"    },
-  { id:3, name:"Mohammed Ali",    username:"maker",      password:"maker123",      role:"maker"      },
-  { id:4, name:"Deepansh Gupta",  username:"authorizer", password:"authorizer123", role:"authorizer" },
-];
-
 
 
 const STAGES = [
@@ -108,126 +101,325 @@ function Input({ label, ...props }) {
    LOGIN PAGE
 ═══════════════════════════════════════════════════════════════════════ */
 function LoginPage({ onLogin }) {
-  const [form, setForm]       = useState({ username:"", password:"" });
+  const [duplicateErrors, setDuplicateErrors] = useState({ email: "", aadhaar: "", pan: ""});
+  const [mode, setMode]       = useState("login"); // "login" or "signup"
+  const [step, setStep]       = useState(1);        // 1, 2, 3
+  const [form, setForm]       = useState({});
   const [error, setError]     = useState("");
   const [loading, setLoading] = useState(false);
-  const [showPwd, setShowPwd] = useState(false);
   const set = (k,v) => setForm(p=>({...p,[k]:v}));
 
-  async function handleSubmit(e) {
+  // ── LOGIN ──────────────────────────────────────
+  async function handleLogin(e) {
     e.preventDefault();
     setError(""); setLoading(true);
+    try {
+      const res = await fetch("http://localhost:8080/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: form.username, password: form.password })
+      });
+     
+      if(!res.ok) throw new Error("Invalid credentials");
+      const data = await res.json();
+      localStorage.setItem("token", data.token);
+      const user = {
+        name: data.name || form.username,
+        role: data.role.replace("ROLE_", "").toLowerCase(),
+        token: data.token
+      };
+      localStorage.setItem("user", JSON.stringify(user));
+      onLogin(user);
+    } catch(err) {
+      setError(err.message || "Login failed!");
+    } finally { setLoading(false); }
+  }
+ async function handleStep1Next() {
+  setError(""); setLoading(true);
+  try {
+    const res = await fetch(`http://localhost:8080/api/auth/check-duplicate?email=${form.username}&aadhaar=&pan=`);
+    const data = await res.json();
+    if (data.emailExists) {
+      setDuplicateErrors(prev => ({ ...prev, email: "Email already registered." }));
+      setLoading(false);
+      return; // ⛔ stay on step 1
+    }
+  } catch (err) {
+    setError("Could not verify. Try again.");
+    setLoading(false);
+    return;
+  }
+  setLoading(false);
+  setStep(2); // ✅ move to step 2
+}
+async function handleStep2Next() {
+  setError(""); setLoading(true);
+  try {
+    const res = await fetch(`http://localhost:8080/api/auth/check-duplicate?email=&aadhaar=${form.aadhaar}&pan=${form.pan}`);
+    const data = await res.json();
+    if (data.aadhaarExists || data.panExists) {
+      setDuplicateErrors(prev => ({
+        ...prev,
+        aadhaar: data.aadhaarExists ? "Aadhaar already registered." : "",
+        pan:     data.panExists     ? "PAN already registered."     : "",
+      }));
+      setLoading(false);
+      return; // ⛔ stay on step 2
+    }
+  } catch (err) {
+    setError("Could not verify. Try again.");
+    setLoading(false);
+    return;
+  }
+  setLoading(false);
+  setStep(3); // ✅ move to step 3
+}
+  // ── SIGNUP ─────────────────────────────────────
+  async function handleSignup() {
+    setError(""); setLoading(true);
 
-   
-
-       try {
-         const res = await fetch("http://localhost:8080/api/auth/login", {
-           method: "POST",
-           headers: { "Content-Type": "application/json" },
-           body: JSON.stringify({ username: form.username, password: form.password })
-         });
-         if (!res.ok) throw new Error("Invalid credentials");
-         const data = await res.json();
-         localStorage.setItem("token", data.token);
-        const user = {
-  name: form.username,
-  role: data.role.replace("ROLE_", "").toLowerCase(), // ROLE_ADMIN → admin
-  token: data.token
-};
-       localStorage.setItem("user", JSON.stringify(user));
-onLogin(user); 
-       } catch (err) {
-         setError(err.message || "Login failed. Please try again.");
-       } finally { setLoading(false); }
-
-
-    // MOCK LOGIN — remove this block when Spring Boot is ready
-    
+    try {
+      
+      const res = await fetch("http://localhost:8080/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form)
+      });
+      //  console.log("Login response:", res.json());
+      const data = await res.json();
+      
+      if(!res.ok) {
+        
+        setError(data.message || "Signup failed!");
+        setLoading(false);
+        return;
+      }
+      console.log("Login response:", res);
+      alert("✅ Registration successful! Please login.");
+      setMode("login");
+      setStep(1);
+      setForm({});
+    } catch(err) {
+      setError("Cannot reach server!");
+    } finally { setLoading(false); }
   }
 
-  return (
-    <div style={{ minHeight:"100vh", background:`linear-gradient(135deg, ${C.navy} 0%, ${C.navyLight} 100%)`, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
-      <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,sans-serif}input:focus{border-color:#0B1D3A!important;box-shadow:0 0 0 3px rgba(11,29,58,0.1);outline:none}`}</style>
+  // ── NEXT STEP ──────────────────────────────────
+  function handleNext() {
+    setError("");
 
-      <div style={{ background:C.white, borderRadius:24, padding:"40px 40px 36px", width:"100%", maxWidth:440, animation:"fadeUp 0.4s ease" }}>
-        {/* Header */}
-        <div style={{ textAlign:"center", marginBottom:32 }}>
-          <div style={{ width:64, height:64, background:C.navy, borderRadius:18, display:"flex", alignItems:"center", justifyContent:"center", fontSize:30, margin:"0 auto 16px" }}>🏦</div>
-          <h1 style={{ fontSize:24, fontWeight:700, color:C.navy, marginBottom:4 }}>LoanSmart AI</h1>
-          <p style={{ color:C.gray500, fontSize:13 }}>Sign in to your portal</p>
+    if(step === 1 ) {
+      if(!form.name)     return setError("Name is required!");
+      if(!form.username) return setError("Email is required!");
+      if(!form.username.includes("@")) return setError("Enter valid email!");
+      if(!form.password) return setError("Password is required!");
+      if(!form.dob)      return setError("Date of Birth is required!");
+      if(duplicateErrors.email) return;
+      setStep(2);
+    }
+
+    else if(step === 2) {
+      if(!form.aadhaar || form.aadhaar.length > 12|| form.aadhaar.length<12) return setError("Enter valid 12 digit Aadhaar!");
+      if(!form.pan || form.pan.length !== 10)          return setError("Enter valid 10 digit PAN!");
+      if(duplicateErrors.aadhaar || duplicateErrors.pan) return;
+      setStep(3);
+    }
+
+    else if(step === 3) {
+      if(!form.cibilScore) return setError("CIBIL Score is required!");
+      if(form.cibilScore < 300 || form.cibilScore > 900) return setError("CIBIL Score must be between 300-900!");
+      handleSignup();
+    }
+  }
+
+  // ── RENDER ─────────────────────────────────────
+  return (
+    <div style={{ minHeight:"100vh", background:C.cream, display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ width:"100%", maxWidth:420, padding:"0 16px" }}>
+
+        {/* Logo */}
+        <div style={{ textAlign:"center", marginBottom:28 }}>
+          <div style={{ fontSize:40, marginBottom:8 }}>🏦</div>
+          <div style={{ fontSize:22, fontWeight:700, color:C.navy }}>LoanSmart AI</div>
+          <div style={{ fontSize:13, color:C.gray500, marginTop:4 }}>
+            {mode==="login" ? "Sign in to your account" : `Step ${step} of 3 — ${step===1?"Personal Info":step===2?"Documents":"CIBIL Score"}`}
+          </div>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display:"flex", flexDirection:"column", gap:16 }}>
-          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-            <label style={{ fontSize:13, fontWeight:600, color:C.gray700 }}>Username</label>
-            <input
-              type="text"
-              placeholder="Enter your username"
-              value={form.username}
-              onChange={e=>set("username",e.target.value)}
-              required
-              style={{ padding:"12px 14px", borderRadius:10, border:`1.5px solid ${C.gray100}`, fontSize:14, outline:"none", transition:"border-color 0.2s" }}
-            />
+        {/* Progress bar for signup */}
+        {mode==="signup" && (
+          <div style={{ display:"flex", gap:6, marginBottom:20 }}>
+            {[1,2,3].map(s=>(
+              <div key={s} style={{ flex:1, height:4, borderRadius:2, background:s<=step?C.navy:C.gray100, transition:"all 0.3s" }} />
+            ))}
           </div>
+        )}
 
-          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-            <label style={{ fontSize:13, fontWeight:600, color:C.gray700 }}>Password</label>
-            <div style={{ position:"relative" }}>
-              <input
-                type={showPwd?"text":"password"}
-                placeholder="Enter your password"
-                value={form.password}
-                onChange={e=>set("password",e.target.value)}
-                required
-                style={{ width:"100%", padding:"12px 44px 12px 14px", borderRadius:10, border:`1.5px solid ${C.gray100}`, fontSize:14, outline:"none", transition:"border-color 0.2s" }}
-              />
-              <button type="button" onClick={()=>setShowPwd(p=>!p)}
-                style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", fontSize:16, color:C.gray500 }}>
-                {showPwd?"🙈":"👁️"}
+        <div style={{ background:C.white, borderRadius:16, padding:28, border:`1px solid ${C.gray100}` }}>
+
+          {/* ── LOGIN FORM ── */}
+          {mode==="login" && (
+            <form onSubmit={handleLogin} style={{ display:"flex", flexDirection:"column", gap:14 }}>
+              <div>
+                <label style={{ fontSize:12, fontWeight:600, color:C.gray500, display:"block", marginBottom:6 }}>Email</label>
+                <input 
+                  type="email"
+                  placeholder="Enter your email"
+                  value={form.username||""} 
+                  onChange={e=>set("username",e.target.value)}
+                  style={{ width:"100%", padding:"11px 14px", borderRadius:10, border:`1px solid ${C.gray100}`, fontSize:14, outline:"none", color:C.gray700, boxSizing:"border-box" }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize:12, fontWeight:600, color:C.gray500, display:"block", marginBottom:6 }}>Password</label>
+                <input 
+                  type="password"
+                  placeholder="Enter your password"
+                  value={form.password||""} 
+                  onChange={e=>set("password",e.target.value)}
+                  style={{ width:"100%", padding:"11px 14px", borderRadius:10, border:`1px solid ${C.gray100}`, fontSize:14, outline:"none", color:C.gray700, boxSizing:"border-box" }}
+                />
+              </div>
+              {error && <div style={{ color:C.red, fontSize:13 }}>❌ {error}</div>}
+              <button type="submit" disabled={loading} style={{ padding:"12px", borderRadius:10, background:C.navy, color:C.white, border:"none", cursor:"pointer", fontWeight:700, fontSize:14, opacity:loading?0.6:1 }}>
+                {loading ? "Signing in..." : "Sign In →"}
               </button>
-            </div>
-          </div>
+              <div style={{ textAlign:"center", fontSize:13, color:C.gray500 }}>
+                Don't have account?{" "}
+                <span onClick={()=>{setMode("signup");setStep(1);setForm({});setError("");}} style={{ color:C.navy, fontWeight:600, cursor:"pointer" }}>
+                  Sign Up
+                </span>
+              </div>
+            </form>
+          )}
 
-          {error && (
-            <div style={{ background:C.redBg, border:`1px solid ${C.red}30`, borderRadius:10, padding:"10px 14px", color:C.red, fontSize:13, display:"flex", alignItems:"center", gap:8 }}>
-              ⚠️ {error}
+          {/* ── SIGNUP STEP 1 — Personal Info ── */}
+          {mode==="signup" && step===1 && (
+            <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+              <div>
+                <label style={{ fontSize:12, fontWeight:600, color:C.gray500, display:"block", marginBottom:6 }}>Full Name *</label>
+                <input placeholder="As per Aadhaar" value={form.name||""} onChange={e=>set("name",e.target.value)}
+                  style={{ width:"100%", padding:"11px 14px", borderRadius:10, border:`1px solid ${C.gray100}`, fontSize:14, outline:"none", color:C.white,backgroundColor:C.gray700, boxSizing:"border-box" }} />
+              </div>
+              <div>
+                <label style={{ fontSize:12, fontWeight:600, color:C.gray500, display:"block", marginBottom:6 }}>Email *</label>
+                <input type="email" placeholder="yourname@email.com" value={form.username||""} onChange={e=>set("username",e.target.value)}
+                onBlur={async (e) => {                                              // ✅ add this
+               if(!e.target.value) return;
+               const res = await fetch(`http://localhost:8080/api/auth/check-duplicate?field=email&value=${e.target.value}`);
+               const data = await res.json();
+               setDuplicateErrors(prev => ({ ...prev, email: data.exists ? "Email already registered." : "" }));
+               }}
+                style={{ width:"100%", padding:"11px 14px", borderRadius:10,  border:`1px solid ${duplicateErrors.email ? "#e53e3e" : C.gray100}`, fontSize:14, outline:"none", color:C.white,backgroundColor:C.gray700, boxSizing:"border-box" }} />
+                {duplicateErrors.email && (
+                <p style={{ color:"#e53e3e", fontSize:11, marginTop:4, marginBottom:0 }}>
+                  ⚠ {duplicateErrors.email}
+               </p>
+                 )}
+              </div>
+              <div>
+                <label style={{ fontSize:12, fontWeight:600, color:C.gray500, display:"block", marginBottom:6 }}>Password *</label>
+                <input type="password" placeholder="Min 8 characters" value={form.password||""} onChange={e=>set("password",e.target.value)}
+                  style={{ width:"100%", padding:"11px 14px", borderRadius:10, border:`1px solid ${C.gray100}`, fontSize:14, outline:"none", color:C.white,backgroundColor:C.gray700, boxSizing:"border-box" }} />
+              </div>
+              <div>
+                <label style={{ fontSize:12, fontWeight:600, color:C.gray500, display:"block", marginBottom:6 }}>Date of Birth *</label>
+                <input type="date" value={form.dob||""} onChange={e=>set("dob",e.target.value)}
+                  style={{ width:"100%", padding:"11px 14px", borderRadius:10, border:`1px solid ${C.gray100}`, fontSize:14, outline:"none", color:C.white,backgroundColor:C.gray700, boxSizing:"border-box" }} />
+              </div>
+              {error && <div style={{ color:C.red, fontSize:13 }}>❌ {error}</div>}
+              <button onClick={handleNext} disabled={loading} style={{ padding:"12px", borderRadius:10, background:C.navy, color:C.white, border:"none", cursor:"pointer", fontWeight:700, fontSize:14 }}>
+                Next → Documents
+              </button>
+              <div style={{ textAlign:"center", fontSize:13, color:C.gray500 }}>
+                Already have account?{" "}
+                <span onClick={()=>{setMode("login");setStep(1);setForm({});setError("");}} style={{ color:C.navy, fontWeight:600, cursor:"pointer" }}>
+                  Sign In
+                </span>
+              </div>
             </div>
           )}
 
-          <button type="submit" disabled={loading}
-            style={{ padding:"13px", borderRadius:12, background:C.navy, color:C.white, border:"none", cursor:loading?"not-allowed":"pointer", fontWeight:700, fontSize:15, marginTop:4, opacity:loading?0.7:1, transition:"opacity 0.2s" }}>
-            {loading ? "Signing in..." : "Sign In →"}
-          </button>
-        </form>
+          {/* ── SIGNUP STEP 2 — Documents ── */}
+          {mode==="signup" && step===2 && (
+            <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+              <div style={{ background:C.blueBg, borderRadius:10, padding:12, fontSize:12, color:C.blue, fontWeight:500 }}>
+                🔐 Your documents are encrypted and stored securely
+              </div>
+              <div>
+                <label style={{ fontSize:12, fontWeight:600, color:C.gray500, display:"block", marginBottom:6 }}>Aadhaar Number *</label>
+                <input placeholder="12 digit Aadhaar number" maxLength={12} value={form.aadhaar||""} onChange={e=>set("aadhaar",e.target.value)}
+                 onBlur={async (e) => {
+    if(e.target.value.length !== 12) return; // only check if valid length
+    const res = await fetch(`http://localhost:8080/api/auth/check-duplicate?field=aadhaar&value=${e.target.value}`);
+    const data = await res.json();
+    setDuplicateErrors(prev => ({ ...prev, aadhaar: data.exists ? "Aadhaar already registered." : "" }));
+  }}
+                 style={{ width:"100%", padding:"11px 14px", borderRadius:10,border:`1px solid ${duplicateErrors.aadhaar ? "#e53e3e" : C.gray100}`, fontSize:14, outline:"none", color:C.white,backgroundColor:C.gray700, boxSizing:"border-box" }} />
+                {duplicateErrors.aadhaar && <p style={{ color: "red", fontSize: "12px" }}>{duplicateErrors.aadhaar}</p>}
 
-        {/* Test credentials */}
-        <div style={{ marginTop:24, background:C.gray50, borderRadius:12, padding:"14px 16px" }}>
-          <div style={{ fontSize:12, fontWeight:600, color:C.gray500, marginBottom:10 }}>🔑 Test Credentials</div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-            {[
-              { role:"User",       user:"user",       pass:"user123"       },
-              { role:"Checker",    user:"checker",    pass:"checker123"    },
-              { role:"Maker",      user:"maker",      pass:"maker123"      },
-              { role:"Authorizer", user:"authorizer", pass:"authorizer123" },
-            ].map(c=>(
-              <button key={c.role} type="button"
-                onClick={()=>{ setForm({ username:c.user, password:c.pass }); setError(""); }}
-                style={{ background:C.white, border:`1px solid ${C.gray100}`, borderRadius:8, padding:"8px 10px", cursor:"pointer", textAlign:"left", transition:"all 0.15s" }}
-                onMouseEnter={e=>e.currentTarget.style.borderColor=C.navy}
-                onMouseLeave={e=>e.currentTarget.style.borderColor=C.gray100}>
-                <div style={{ fontSize:11, fontWeight:600, color:C.navy }}>{c.role}</div>
-                <div style={{ fontSize:10, color:C.gray500, marginTop:1 }}>{c.user} / {c.pass}</div>
-              </button>
-            ))}
-          </div>
-          <p style={{ fontSize:11, color:C.gray300, marginTop:8 }}>Click any card to auto-fill credentials</p>
+              </div>
+              <div>
+                <label style={{ fontSize:12, fontWeight:600, color:C.gray500, display:"block", marginBottom:6 }}>PAN Number *</label>
+                <input placeholder="ABCDE1234F" maxLength={10} value={form.pan||""} onChange={e=>set("pan",e.target.value.toUpperCase())}
+                  onBlur={async (e) => {
+    if(e.target.value.length !== 10) return; // only check if valid length
+    const res = await fetch(`http://localhost:8080/api/auth/check-duplicate?field=pan&value=${e.target.value}`);
+    const data = await res.json();
+    setDuplicateErrors(prev => ({ ...prev, pan: data.exists ? "PAN already registered." : "" }));
+  }}
+                  style={{ width:"100%", padding:"11px 14px", borderRadius:10, border:`1px solid ${duplicateErrors.pan ? "#e53e3e" : C.gray100}`, fontSize:14, outline:"none", color:C.white,backgroundColor:C.gray700, boxSizing:"border-box" }} />
+                {duplicateErrors.pan && <p style={{ color:"#e53e3e", fontSize:11, marginTop:4, marginBottom:0 }}>⚠ {duplicateErrors.pan}</p>} {/* ✅ added */}
+              </div>
+              {error && <div style={{ color:C.red, fontSize:13 }}>❌ {error}</div>}
+              <div style={{ display:"flex", gap:10 }}>
+                <button onClick={()=>setStep(1)} style={{ flex:1, padding:"12px", borderRadius:10, background:C.gray100, color:C.gray700, border:"none", cursor:"pointer", fontWeight:600, fontSize:14 }}>
+                  ← Back
+                </button>
+                <button onClick={handleNext} style={{ flex:2, padding:"12px", borderRadius:10, background:C.navy, color:C.white, border:"none", cursor:"pointer", fontWeight:700, fontSize:14 }}>
+                  Next → CIBIL Score
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── SIGNUP STEP 3 — CIBIL ── */}
+          {mode==="signup" && step===3 && (
+            <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+              <div style={{ background:C.amberBg, borderRadius:10, padding:12, fontSize:12, color:C.amber, fontWeight:500 }}>
+                ⚠️ In real world CIBIL is fetched automatically. Enter your score for demo purposes.
+              </div>
+              <div>
+                <label style={{ fontSize:12, fontWeight:600, color:C.gray500, display:"block", marginBottom:6 }}>CIBIL Score * (300-900)</label>
+                <input type="number" min={300} max={900} placeholder="Enter your CIBIL score" value={form.cibilScore||""} onChange={e=>set("cibilScore",+e.target.value)}
+                  style={{ width:"100%", padding:"11px 14px", borderRadius:10, border:`1px solid ${C.gray100}`, fontSize:14, outline:"none", color:C.gray700, boxSizing:"border-box" }} />
+              </div>
+              {/* Score indicator */}
+              {form.cibilScore>0 && (
+                <div style={{ background:form.cibilScore>=750?C.greenBg:form.cibilScore>=650?C.amberBg:C.redBg, borderRadius:10, padding:12, textAlign:"center" }}>
+                  <div style={{ fontSize:28, fontWeight:700, color:form.cibilScore>=750?C.green:form.cibilScore>=650?C.amber:C.red }}>{form.cibilScore}</div>
+                  <div style={{ fontSize:12, color:form.cibilScore>=750?C.green:form.cibilScore>=650?C.amber:C.red, fontWeight:600 }}>
+                    {form.cibilScore>=750?"Excellent ✅":form.cibilScore>=700?"Good 👍":form.cibilScore>=650?"Fair ⚠️":"Poor ❌"}
+                  </div>
+                </div>
+              )}
+              {error && <div style={{ color:C.red, fontSize:13 }}>❌ {error}</div>}
+              <div style={{ display:"flex", gap:10 }}>
+                <button onClick={()=>setStep(2)} style={{ flex:1, padding:"12px", borderRadius:10, background:C.gray100, color:C.gray700, border:"none", cursor:"pointer", fontWeight:600, fontSize:14 }}>
+                  ← Back
+                </button>
+                <button onClick={handleNext} disabled={loading} style={{ flex:2, padding:"12px", borderRadius:10, background:C.green, color:C.white, border:"none", cursor:"pointer", fontWeight:700, fontSize:14, opacity:loading?0.6:1 }}>
+                  {loading ? "Registering..." : "✅ Complete Registration"}
+                </button>
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     </div>
   );
 }
-
 /* ═══════════════════════════════════════════════════════════════════════
    AI CHAT
 ═══════════════════════════════════════════════════════════════════════ */
@@ -272,7 +464,7 @@ async function send() {
       <div style={{ flex:1, overflowY:"auto", padding:16, display:"flex", flexDirection:"column", gap:12, background:C.gray50 }}>
         {msgs.map((m,i)=>(
           <div key={i} style={{ display:"flex", justifyContent:m.role==="user"?"flex-end":"flex-start" }}>
-            <div style={{ maxWidth:"80%", padding:"10px 14px", fontSize:13, lineHeight:1.6, borderRadius:m.role==="user"?"18px 18px 4px 18px":"18px 18px 18px 4px", background:m.role==="user"?C.navy:C.white, color:m.role==="user"?C.white:C.gray700, border:m.role==="assistant"?`1px solid ${C.gray100}`:"none" }}>{m.text}</div>
+            <div style={{ flex:1, padding:"10px 14px", borderRadius:24, border:`1px solid ${C.gray100}`, fontSize:13, outline:"none", background:C.gray50, color:C.gray700 }}>{m.text}</div>
           </div>
         ))}
         {loading&&<div style={{ display:"flex", gap:5, padding:"10px 14px", background:C.white, borderRadius:"18px 18px 18px 4px", width:"fit-content", border:`1px solid ${C.gray100}` }}>{[0,1,2].map(i=><div key={i} style={{ width:7, height:7, borderRadius:"50%", background:C.gray300, animation:`bounce 1.2s ${i*0.2}s infinite` }} />)}</div>}
@@ -400,7 +592,33 @@ function ApplyLoan({ onNotify ,loanTypes}) {
     })
     .catch(err => console.error("Profile fetch failed:", err))
   }, []);
+  const set=(k,v)=>setForm(p=>({...p,[k]:v}));
+  console.log(form.income, lt); // ← ADD
+  const ea=(()=>{ if(!lt)return 0;
+  const base=parseFloat(form.income)||0; 
+  return ["salary","pension","itr"].includes(lt.id)
+  ?base*lt.mult
+  :base*lt.mult/100; 
+   })();
+  console.log("Eligible Amount (ea):", ea); // ← ADD
+  const emi=calcEMI(ea,lt?.rate||10,tenure);
+  const loanAmt=parseFloat(form.appliedAmt)||ea;
+  const cEmi=calcEMI(loanAmt,lt?.rate||10,tenure);
   const handleSubmit = async () => {
+  
+  console.log("Submit payload:", {
+    loanTypeId:     lt?.id,
+    applicantName:  form.name,
+    mobile:         form.mobile,
+    pan:            form.panKyc,
+    dob:            form.dob,
+    income:         form.income,
+    employer:       form.employer,
+    empType:        form.empType,
+    tenure:         tenure,
+    eligibleAmount: ea,
+    emi:            emi
+  });
     if(!form.name || !form.mobile || !form.panKyc || !form.income) {
       alert("Please fill Name, Mobile, PAN and Income!");
       return;
@@ -424,6 +642,7 @@ function ApplyLoan({ onNotify ,loanTypes}) {
     empType: form.empType,
     tenure: tenure,
     eligibleAmount: ea,
+    appliedAmt: form.income,
     emi: emi
   };
   try {
@@ -431,7 +650,7 @@ function ApplyLoan({ onNotify ,loanTypes}) {
       const res = await fetch("http://localhost:8080/api/loans/apply", {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json" },
+                 "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
     if(res.ok) {
@@ -446,6 +665,8 @@ function ApplyLoan({ onNotify ,loanTypes}) {
   }
 };
 const handleSendOtp = async () => {
+  console.log("form.mobile:", form.mobile); // ← ADD
+  console.log("full form:", form);
   if(!form.mobile || form.mobile.length !== 10) {
     alert("Please enter valid 10 digit mobile number!");
     return;
@@ -501,11 +722,8 @@ const handleVerifyOtp = async () => {
 };
 
 // ← already exists
-  const set=(k,v)=>setForm(p=>({...p,[k]:v}));
-  const ea=(()=>{ if(!lt)return 0; const base=parseFloat(form.income)||0; return ["salary","pension","itr"].includes(lt.id)?base*lt.mult:base*lt.mult/100; })();
-  const emi=calcEMI(ea,lt?.rate||10,tenure);
-  const loanAmt=parseFloat(form.loanAmt)||ea;
-  const cEmi=calcEMI(loanAmt,lt?.rate||10,tenure);
+
+ 
 
   if(done) return (
     <div style={{ textAlign:"center", padding:"60px 20px" }}>
@@ -759,19 +977,54 @@ function FraudPanel({ apps }) {
   const [sel,setSel]           = useState(null);
   const [analysis,setAnalysis] = useState("");
   const [loading,setLoading]   = useState(false);
-  const flagged = apps.filter(a=>a.flags&&a.flags.length>0);
+  // Generate fraud flags from real data
+const withFlags = apps.map(app => {
+  const flags = [];
+  if(app.score < 600)                           flags.push("Low CIBIL");
+  if(app.appliedAmt > (app.income * 12 * 5))   flags.push("High Amount vs Income");
+  if(app.score < 650 && app.appliedAmt > 500000) flags.push("High Risk Application");
+  if(!app.employer)                              flags.push("No Employer Info");
+  return { ...app, flags };
+});
 
-  async function analyzeAI(app) {
-    setSel(app); setAnalysis(""); setLoading(true);
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method:"POST", headers:{ "Content-Type":"application/json", "x-api-key":process.env.REACT_APP_ANTHROPIC_KEY||"", "anthropic-version":"2023-06-01" },
-        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:600, system:"You are a fraud detection AI. Return: 1) Fraud probability %, 2) Risk indicators, 3) Recommended action.", messages:[{role:"user",content:`Fraud check: ${app.applicant}, ${app.type}, ₹${app.amount.toLocaleString("en-IN")}, CIBIL:${app.score}, Flags:${app.flags.join(",")}`}] })
-      });
-      const data = await res.json(); setAnalysis(data.content?.[0]?.text||"");
-    } catch { setAnalysis("Add REACT_APP_ANTHROPIC_KEY in .env for AI analysis."); }
-    setLoading(false);
+const flagged = withFlags.filter(a => a.flags.length > 0);
+
+async function analyzeAI(app) {
+  setSel(app); setAnalysis(""); setLoading(true);
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch("http://localhost:8080/api/ai/chat", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        prompt: `You are a fraud detection AI for an Indian bank. Analyze this loan application:
+
+Applicant: ${app.applicant}
+Loan Type: ${app.loanType}
+Amount: ₹${app.appliedAmt?.toLocaleString("en-IN")}
+CIBIL Score: ${app.score}
+Monthly Income: ${app.income ? fmtINR(app.income) : "N/A"}
+Fraud Flags: ${app.flags?.join(", ") || "None"}
+
+Please provide in EXACT format:
+🚨 FRAUD PROBABILITY: [X%]
+⚠️ RISK INDICATORS:
+- [Indicator 1]
+- [Indicator 2]
+✅ RECOMMENDED ACTION: [Approve/Review/Reject/Investigate]
+📋 REASON: [Brief explanation]`
+      })
+    });
+    const data = await res.json();
+    setAnalysis(data.text || "No response from AI");
+  } catch { 
+    setAnalysis("Cannot reach server. Is Spring Boot running?"); 
   }
+  setLoading(false);
+}
 
   return (
     <div>
@@ -788,11 +1041,11 @@ function FraudPanel({ apps }) {
             {flagged.map(app=>(
               <div key={app.id} onClick={()=>analyzeAI(app)} style={{ padding:14, borderRadius:12, border:`1.5px solid ${sel?.id===app.id?C.red:C.gray100}`, marginBottom:10, cursor:"pointer", background:sel?.id===app.id?C.redBg:C.white, transition:"all 0.2s" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
-                  <div><div style={{ fontWeight:600, color:C.navy }}>{app.applicant}</div><div style={{ fontSize:12, color:C.gray500 }}>{app.id} · {app.type}</div></div>
+                  <div><div style={{ fontWeight:600, color:C.navy }}>{app.applicant}</div><div style={{ fontSize:12, color:C.gray500 }}>{app.id} · {app.loanType}</div></div>
                   <RiskBadge risk={app.risk}/>
                 </div>
                 <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:6 }}>{app.flags.map((f,i)=><span key={i} style={{ background:C.redBg, color:C.red, fontSize:10, fontWeight:600, padding:"2px 8px", borderRadius:12 }}>⚠ {f}</span>)}</div>
-                <div style={{ fontSize:12, color:C.gray500 }}>Amount: {fmtINR(app.amount)} · CIBIL: {app.score}</div>
+                <div style={{ fontSize:12, color:C.gray500 }}>Amount: {fmtINR(app.appliedAmt)} · CIBIL: {app.score}</div>
               </div>
             ))}
           </Card>
@@ -800,7 +1053,7 @@ function FraudPanel({ apps }) {
         <div>
           {sel?(
             <Card><div style={{ fontWeight:600, color:C.navy, fontSize:14, marginBottom:12 }}>🤖 AI Fraud Analysis</div>
-              <div style={{ background:C.gray50, borderRadius:10, padding:12, marginBottom:12 }}><div style={{ fontSize:15, fontWeight:600, color:C.navy }}>{sel.applicant}</div><div style={{ fontSize:12, color:C.gray500, marginTop:4 }}>{sel.type} · {fmtINR(sel.amount)}</div></div>
+              <div style={{ background:C.gray50, borderRadius:10, padding:12, marginBottom:12 }}><div style={{ fontSize:15, fontWeight:600, color:C.navy }}>{sel.applicant}</div><div style={{ fontSize:12, color:C.gray500, marginTop:4 }}>{sel.type} · {fmtINR(sel.appliedAmt)}</div></div>
               {loading?<div style={{ textAlign:"center", padding:24, color:C.gray500 }}>Analyzing fraud patterns...</div>:<div style={{ fontSize:13, color:C.gray700, lineHeight:1.7, whiteSpace:"pre-wrap" }}>{analysis}</div>}
             </Card>
           ):(
@@ -811,7 +1064,16 @@ function FraudPanel({ apps }) {
     </div>
   );
 }
-
+function getLoanStage(status) {
+  switch(status?.toLowerCase()) {
+    case "pending":      return 0; // Application Received
+    case "under_review": return 1; // Document Verification
+    case "approved":     return 2; // Credit Assessment
+    case "disbursed":    return 5; // Amount Disbursed
+    case "rejected":     return -1; // Rejected
+    default:             return 0;
+  }
+}
 /* ═══════════════════════════════════════════════════════════════════════
    APPROVAL WORKFLOW (Checker / Maker / Authorizer)
 ═══════════════════════════════════════════════════════════════════════ */
@@ -839,6 +1101,15 @@ function ApprovalWorkflow({ apps, setApps, role, onNotify }) {
     alert("Failed to update status!");
   }
 }
+function extractRisk(insight) {
+  if(!insight) return "unknown";
+  const lower = insight.toLowerCase();
+  if(lower.includes("high risk") || lower.includes("🔴")) return "high";
+  if(lower.includes("medium risk") || lower.includes("🟡")) return "medium";
+  if(lower.includes("low risk") || lower.includes("🟢")) return "low";
+  return "unknown";
+}
+
 
 async function getInsight(app) {
   setSel(app); setInsight(""); setLoading(true);
@@ -880,9 +1151,15 @@ Tenure: ${app.tenure} months
 EMI: ${app.emi ? fmtINR(app.emi) : "N/A"}`
       })
     });
-    const data = await res.json();
-  console.log("AI Response:", data);
-    setInsight(data.text||"");
+   const data = await res.json();
+console.log("AI Response:", data);
+const aiText = data.text || "No response from AI";
+setInsight(aiText);
+
+// ← ADD THESE 2 LINES
+const risk = extractRisk(aiText);
+setSel(p => ({...p, risk}));
+    
   } catch { 
     setInsight("Cannot reach server. Is Spring Boot running?"); 
   }
@@ -946,6 +1223,7 @@ function downloadPDF(app, insight) {
   // Save PDF
   doc.save(`LoanReport_${app.applicant}_${new Date().toLocaleDateString("en-IN")}.pdf`);
 }
+
   return (
     <div>
       <Title sub={`${role==="checker"?"First-level review":role==="maker"?"Second-level approval":"Final sanction"} — AI-assisted`}>
@@ -977,7 +1255,7 @@ function downloadPDF(app, insight) {
                 <Badge status={sel.status}/>
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
-                {[{label:"Loan Type",value:sel.type},{label:"Amount",value:fmtINR(sel.appliedAmt)},{label:"CIBIL Score",value:sel.score},{label:"Income",value:sel.income?fmtINR(sel.income):"N/A"},{label:"Risk Level",value:<RiskBadge risk={sel.risk}/>},{label:"Stage",value:STAGES[sel.stage||0]}].map((item,i)=>(
+                {[{label:"Loan Type",value:sel.type},{label:"Amount",value:fmtINR(sel.appliedAmt)},{label:"CIBIL Score",value:sel.score},{label:"Income",value:sel.income?fmtINR(sel.income):"N/A"},{label:"Risk Level",value:<RiskBadge risk={sel.risk}/>},{label:"Stage", value:STAGES[getLoanStage(sel.status)]}].map((item,i)=>(
                   <div key={i} style={{ background:C.gray50, borderRadius:8, padding:"10px 12px" }}><div style={{ fontSize:11, color:C.gray500, marginBottom:2 }}>{item.label}</div><div style={{ fontSize:13, fontWeight:600, color:C.navy }}>{item.value}</div></div>
                 ))}
               </div>
@@ -1015,18 +1293,18 @@ function DisbursementTracker({ apps }) {
           {active.map(app=>(
             <div key={app.id} onClick={()=>setSel(app)} style={{ background:sel?.id===app.id?C.navy:C.white, borderRadius:14, padding:16, marginBottom:10, border:`1px solid ${sel?.id===app.id?C.navy:C.gray100}`, cursor:"pointer", transition:"all 0.2s" }}>
               <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}><div><div style={{ fontWeight:600, color:sel?.id===app.id?C.white:C.navy }}>{app.applicant}</div><div style={{ fontSize:12, color:sel?.id===app.id?"rgba(255,255,255,0.5)":C.gray500 }}>{app.type}</div></div><Badge status={app.status}/></div>
-              <div style={{ fontSize:15, fontWeight:700, color:sel?.id===app.id?C.gold:C.navy, marginBottom:8 }}>{fmtINR(app.amount)}</div>
-              <div style={{ display:"flex", gap:3 }}>{STAGES.map((_,i)=><div key={i} style={{ flex:1, height:4, borderRadius:2, background:i<=(app.stage||0)?C.gold:sel?.id===app.id?"rgba(255,255,255,0.15)":C.gray100 }} />)}</div>
-              <div style={{ fontSize:11, color:sel?.id===app.id?"rgba(255,255,255,0.5)":C.gray500, marginTop:4 }}>{STAGES[app.stage||0]}</div>
+              <div style={{ fontSize:15, fontWeight:700, color:sel?.id===app.id?C.gold:C.navy, marginBottom:8 }}>{fmtINR(app.appliedAmt)}</div>
+              <div style={{ display:"flex", gap:3 }}>{STAGES.map((_,i)=><div key={i} style={{ flex:1, height:4, borderRadius:2, background:i<=getLoanStage(app.status)?C.gold:sel?.id===app.id?"rgba(255,255,255,0.15)":C.gray100 }} />)}</div>
+              <div style={{ fontSize:11, color:sel?.id===app.id?"rgba(255,255,255,0.5)":C.gray500, marginTop:4 }}>{STAGES[getLoanStage(app.status)]}</div>
             </div>
           ))}
         </div>
         {sel?(
           <Card>
             <div style={{ fontWeight:700, color:C.navy, fontSize:16, marginBottom:4 }}>{sel.applicant}</div>
-            <div style={{ fontSize:13, color:C.gray500, marginBottom:20 }}>{sel.id} · {fmtINR(sel.amount)}</div>
+            <div style={{ fontSize:13, color:C.gray500, marginBottom:20 }}>{sel.id} · {fmtINR(sel.appliedAmt)}</div>
             {STAGES.map((stage,i)=>{
-              const done=i<=(sel.stage||0); const cur=i===(sel.stage||0);
+             const done=i<=getLoanStage(sel.status); const cur=i===getLoanStage(sel.status);
               return (
                 <div key={i} style={{ display:"flex", gap:14 }}>
                   <div style={{ display:"flex", flexDirection:"column", alignItems:"center" }}>
@@ -1131,9 +1409,9 @@ function MyLoans({ apps }) {
         {sel&&(
           <Card>
             <div style={{ fontWeight:700, color:C.navy, fontSize:16, marginBottom:4 }}>{sel.type}</div>
-            <div style={{ fontSize:13, color:C.gray500, marginBottom:20 }}>{sel.id} · {fmtINR(sel.amount)}</div>
+            <div style={{ fontSize:13, color:C.gray500, marginBottom:20 }}>{sel.id} · {fmtINR(sel.appliedAmt)}</div>
             {STAGES.map((stage,i)=>{
-              const done=i<=(sel.stage||0); const cur=i===(sel.stage||0);
+const done=i<=getLoanStage(sel.status); const cur=i===getLoanStage(sel.status);
               return (
                 <div key={i} style={{ display:"flex", gap:14 }}>
                   <div style={{ display:"flex", flexDirection:"column", alignItems:"center" }}>
@@ -1211,13 +1489,15 @@ const fetchApps = async (loadedLoanTypes) => {
   }
 };
 const fetchLoanTypes = async () => {
+  console.log("Fetching loan types from backend...");
   try {
     const res = await axios.get("http://localhost:8080/api/loans/types");
     const enriched = res.data.map(lt => ({
       ...lt,
       icon: LOAN_ICONS[lt.id]?.icon || "🏦",
-      desc: LOAN_ICONS[lt.id]?.desc || lt.desc,
     }));
+    console.log("Raw data from backend:", res.data[0]); // ← ADD
+    console.log("Enriched:", enriched[0]); 
     setLoanTypes(enriched);
     {page==="analytics" && <Analytics apps={apps} loanTypes={loanTypes.length>0?loanTypes:JSON.parse(localStorage.getItem("loanTypes")||"[]")}/>}
     return enriched;

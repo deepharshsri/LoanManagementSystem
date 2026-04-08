@@ -35,6 +35,7 @@ public class LoanService {
         private ApprovalWorkFlowService approvalWorkFlowService;
 
        public Loan requestLoan(Long userId,LoanApplicationDto request){
+        System.out.println("Request received for loan application: " + request);
         Optional<User> userExist=userRepository.findById(userId);
         Optional<LoanType> loanType=loanTypeRepository.findById(request.getLoanTypeId()); 
         //  System.out.println("user exist: "+userExist.get());
@@ -50,10 +51,12 @@ public class LoanService {
             System.out.println("Loan of this type already exists for the user");
             throw new RuntimeException("Loan of this type already exists for the user");
         }
+        int score=userExist.get().getCibil().getScore();
         Loan l1=loanType.map(it->{
             return Loan.builder()
             .applicantName(request.getApplicantName())
             .mobile(request.getMobile())
+            .appliedAmt(request.getAppliedAmt())
             .pan(request.getPan())
             .dob(request.getDob())
             .income(request.getIncome())
@@ -63,6 +66,8 @@ public class LoanService {
             .eligibleAmount(request.getEligibleAmount())
             .emi(request.getEmi())
             .user(userExist.get())
+            .score(score)
+            .status("pending")
             .loanType(it)
             .build();
         }).orElseThrow(()-> new RuntimeException("Loan Type not found"));

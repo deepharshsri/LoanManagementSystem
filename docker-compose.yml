@@ -1,0 +1,49 @@
+
+services:
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: loanManagementSystem
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Deep@nsh.98
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  # Spring Boot Backend
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/loanManagementSystem
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: Deep@nsh.98
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      GROQ_API_KEY: ${GROQ_API_KEY}
+    depends_on:
+      - postgres
+      - redis
+
+  # React Frontend
+  frontend:
+    build: ./loan-ui
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

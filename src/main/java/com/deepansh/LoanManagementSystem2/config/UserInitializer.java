@@ -53,7 +53,7 @@ public class UserInitializer implements CommandLineRunner{
     userRepository.saveAll(List.of(user,user2,user3,user4)); 
     documentRepo.saveAll(List.of(aadhar,pan));
     user.setDocuments(List.of(aadhar,pan));
-    Cibil cibil=new Cibil().builder().score(750).pan("ABCDE1234F").user(user).build();
+    Cibil cibil=new Cibil().builder().score(400).pan("ABCDE1234F").user(user).build();
     cibilRepo.save(cibil);
     user.setCibil(cibil); 
     userRepository.save(user);    

@@ -26,7 +26,7 @@ public class DocumentService {
     private UserRepository userRepository;
 
     public List<Loan> getAllLoans(String documentNumber){
-        return documentRepo.findBydocumentNumber(documentNumber);
+        return documentRepo.findLoansBydocumentNumber(documentNumber);
     }
     
     public User findUser(String documentNumber){

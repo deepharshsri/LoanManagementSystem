@@ -1,5 +1,6 @@
 package com.deepansh.LoanManagementSystem2.Entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -26,6 +27,7 @@ public class LoanType {
     @Id
     private String id;
     private String label;
+    @Column(name="description",length=1000) 
     private String description;
     private Double rate;
     private Integer mult;

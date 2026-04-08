@@ -18,7 +18,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
+import jakarta.validation.constraints.NotBlank;
 
 @Entity
 @Builder
@@ -31,9 +31,13 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @NotBlank(message = "Name is required")
     private String name;
-    private String username;
-    private String password;
+    @NotBlank(message = "Username is required")
+     private String username;
+    @NotBlank(message = "Password is required")
+     private String password;
+    @NotBlank(message = "Date of Birth is required")
     private String dob;
     private String role;
     
