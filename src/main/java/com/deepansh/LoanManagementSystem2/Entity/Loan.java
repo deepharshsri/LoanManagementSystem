@@ -40,7 +40,7 @@ public class Loan {
     private Double emi;
     private String status;
     private Integer appliedAmt;
-    
+    private String rejectedReason;
     @ManyToOne
     @JoinColumn (name = "user_id")
     @JsonIgnore

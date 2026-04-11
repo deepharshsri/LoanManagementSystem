@@ -47,6 +47,7 @@ public class authController {
         System.out.println("loginName: "+login.getUsername()+" loginPass: "+login.getPassword());
         UserDetails userDetails=authService.authenticateUser(login.getUsername(),login.getPassword() );
         String token=authService.generateToken(userDetails);
+        System.out.println(userDetails.getAuthorities().iterator().next().getAuthority());
         return  AuthResponse.builder()
                             .token(token)
                             .expiryTime("86400")
@@ -65,6 +66,7 @@ public class authController {
      
      @GetMapping("/check-duplicate")
      public ResponseEntity<?> checkUsername(@RequestParam String field,@RequestParam String value){
+          System.out.println("field: "+field+" value: "+value);
           boolean exist=switch (field) {
                case "email"-> userRepository.findByUsername(value)!=null;
                case "pan"->documentRepo.existsByDocumentNumber(value);

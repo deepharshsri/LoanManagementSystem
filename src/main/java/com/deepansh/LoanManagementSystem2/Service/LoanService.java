@@ -98,9 +98,10 @@ public class LoanService {
      //
      // need to check again who to take update status responsibilty
      //
-    public Loan updateLoanStatus(Long loanId,String status){
+    public Loan updateLoanStatus(Long loanId,String status,String rejectReason){
         Loan loan=loanRepo.findById(loanId).get();
         loan.setStatus(status);
+        if(rejectReason!=null && !rejectReason.isEmpty()) loan.setRejectedReason(rejectReason);
         return loanRepo.save(loan);
     }
 

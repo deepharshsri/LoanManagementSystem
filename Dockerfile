@@ -1,14 +1,13 @@
-# Step 1 — Use Java 17
-FROM eclipse-temurin:17-jdk-alpine
-
-# Step 2 — Set working directory inside container
+# ✅ Stage 1 — use maven image (already has Java + Maven)
+FROM maven:3.9-eclipse-temurin-17-alpine AS build
 WORKDIR /app
+COPY pom.xml .
+RUN mvn dependency:go-offline  
+COPY src ./src
+RUN mvn clean package -DskipTests
 
-# Step 3 — Copy built JAR file
-COPY target/*.jar app.jar
-
-# Step 4 — Open port 8080
-EXPOSE 8080
-
-# Step 5 — Run the app
+# ✅ Stage 2 — Run
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
 ENTRYPOINT ["java", "-jar", "app.jar"]

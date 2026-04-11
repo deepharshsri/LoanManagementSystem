@@ -20,4 +20,5 @@ public class LoanResponseDTo {
     String applicant;
     String type;
     Double income;
+    String rejectReason;
 }

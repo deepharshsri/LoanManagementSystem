@@ -58,7 +58,7 @@ public class UserService {
        int score=cibilRepo.findScoreByPan(pan);;
        List<Loan> loans = loanService.getAllLoans(user.getId());
        List<LoanResponseDTo> loanResponseDToList = loans.stream().map(loan -> 
-           new LoanResponseDTo(loan.getId(),  loan.getLoanType().getLabel(), loan.getStatus(), loan.getAppliedAmt(), score, loan.getApplicantName(), loan.getLoanType().getLabel(), loan.getIncome())
+           new LoanResponseDTo(loan.getId(),  loan.getLoanType().getLabel(), loan.getStatus(), loan.getAppliedAmt(), score, loan.getApplicantName(), loan.getLoanType().getLabel(), loan.getIncome(),loan.getRejectedReason())
        ).toList();
        for (LoanResponseDTo loan : loanResponseDToList) {
         loan.setScore(score);

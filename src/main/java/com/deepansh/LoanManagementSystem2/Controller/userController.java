@@ -68,9 +68,6 @@ public ResponseEntity<?> getAllLoans(Authentication authentication) {
     String username=authentication.getName();
     User user = userService.findByUserName(username);
     System.out.println("loan request: "+loanRequest.getApplicantName());
-    // Process the loan application using the user and request data
-    // For example, you can call a service method to handle the application logic
-    // loanService.applyForLoan(user, request);
     loanService.requestLoan(user.getId(), loanRequest);
     return ResponseEntity.ok(Map.of(
         "message", "Loan application submitted successfully"
@@ -87,7 +84,9 @@ public ResponseEntity<?> getAllLoans(Authentication authentication) {
         ));
     }
     String status=request.get("status");
-    loanService.updateLoanStatus(id, status);
+  
+    loanService.updateLoanStatus(id, status,request.get("rejectReason"));
+   
     return ResponseEntity.ok(Map.of(
         "message", "Loan status updated successfully"
     ));

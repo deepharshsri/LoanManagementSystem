@@ -194,7 +194,7 @@ async function handleStep2Next() {
         setLoading(false);
         return;
       }
-      console.log("Login response:", res);
+      // console.log("Login response:", res);
       alert("✅ Registration successful! Please login.");
       setMode("login");
       setStep(1);
@@ -219,7 +219,7 @@ async function handleStep2Next() {
     }
 
     else if(step === 2) {
-      if(!form.aadhaar || form.aadhaar.length > 12|| form.aadhaar.length<12) return setError("Enter valid 12 digit Aadhaar!");
+      if(!form.aadhaar || form.aadhaar.length > 14|| form.aadhaar.length<14) return setError("Enter valid 12 digit Aadhaar!");
       if(!form.pan || form.pan.length !== 10)          return setError("Enter valid 10 digit PAN!");
       if(duplicateErrors.aadhaar || duplicateErrors.pan) return;
       setStep(3);
@@ -324,9 +324,10 @@ async function handleStep2Next() {
               </div>
               <div>
                 <label style={{ fontSize:12, fontWeight:600, color:C.gray500, display:"block", marginBottom:6 }}>Date of Birth *</label>
-                <input type="date" value={form.dob||""} onChange={e=>set("dob",e.target.value)}
-                  style={{ width:"100%", padding:"11px 14px", borderRadius:10, border:`1px solid ${C.gray100}`, fontSize:14, outline:"none", color:C.white,backgroundColor:C.gray700, boxSizing:"border-box" }} />
-              </div>
+               <input   type="date"   value={form.dob||""} 
+                onChange={e=>set("dob",e.target.value)}   min="1924-01-01"     
+                max="2006-12-31" style={{ width:"100%", padding:"11px 14px", borderRadius:10, border:`1px solid ${C.gray100}`, fontSize:14, outline:"none", color:C.white,backgroundColor:C.gray700, boxSizing:"border-box" }} />
+               </div>
               {error && <div style={{ color:C.red, fontSize:13 }}>❌ {error}</div>}
               <button onClick={handleNext} disabled={loading} style={{ padding:"12px", borderRadius:10, background:C.navy, color:C.white, border:"none", cursor:"pointer", fontWeight:700, fontSize:14 }}>
                 Next → Documents
@@ -348,16 +349,30 @@ async function handleStep2Next() {
               </div>
               <div>
                 <label style={{ fontSize:12, fontWeight:600, color:C.gray500, display:"block", marginBottom:6 }}>Aadhaar Number *</label>
-                <input placeholder="12 digit Aadhaar number" maxLength={12} value={form.aadhaar||""} onChange={e=>set("aadhaar",e.target.value)}
-                 onBlur={async (e) => {
-    if(e.target.value.length !== 12) return; // only check if valid length
-    const res = await fetch(`http://localhost:8080/api/auth/check-duplicate?field=aadhaar&value=${e.target.value}`);
+                <input 
+  placeholder="XXXX XXXX XXXX" 
+  maxLength={14}
+  value={form.aadhaar||""} 
+  onChange={e => {
+    const raw = e.target.value.replace(/\s/g, "");  // remove spaces
+    if(!/^\d*$/.test(raw)) return;                   // only numbers
+    const formatted = raw.match(/.{1,4}/g)?.join(" ") || raw;  // add space every 4
+    set("aadhaar", formatted);
+  }}
+  onBlur={async (e) => {
+    const clean = e.target;
+    
+    if(clean.value.length !== 14) return;
+    console.log(clean.value.length);
+    const res = await fetch(`http://localhost:8080/api/auth/check-duplicate?field=aadhaar&value=${clean.value}`);
     const data = await res.json();
     setDuplicateErrors(prev => ({ ...prev, aadhaar: data.exists ? "Aadhaar already registered." : "" }));
   }}
-                 style={{ width:"100%", padding:"11px 14px", borderRadius:10,border:`1px solid ${duplicateErrors.aadhaar ? "#e53e3e" : C.gray100}`, fontSize:14, outline:"none", color:C.white,backgroundColor:C.gray700, boxSizing:"border-box" }} />
-                {duplicateErrors.aadhaar && <p style={{ color: "red", fontSize: "12px" }}>{duplicateErrors.aadhaar}</p>}
-
+  style={{ width:"100%", padding:"11px 14px", borderRadius:10,
+    border:`1px solid ${duplicateErrors.aadhaar ? "#e53e3e" : C.gray100}`, 
+    fontSize:14, outline:"none", color:C.white, backgroundColor:C.gray700, boxSizing:"border-box" }} 
+/>
+{duplicateErrors.aadhaar && <p style={{ color:"red", fontSize:"12px" }}>{duplicateErrors.aadhaar}</p>}
               </div>
               <div>
                 <label style={{ fontSize:12, fontWeight:600, color:C.gray500, display:"block", marginBottom:6 }}>PAN Number *</label>
@@ -424,7 +439,7 @@ async function handleStep2Next() {
    AI CHAT
 ═══════════════════════════════════════════════════════════════════════ */
 function AIChat({ ctx="" }) {
-  const [msgs, setMsgs] = useState([{ role:"assistant", text:"Hello! I'm your AI Loan Advisor powered by Claude. I can assess eligibility, calculate EMIs, explain ITR, CIBIL scores and fraud patterns. How can I help?" }]);
+  const [msgs, setMsgs] = useState([{ role:"assistant", text: "Hi! I'm your Loan Advisor 👋 What kind of loan are you looking for today?"  }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const endRef = useRef(null);
@@ -444,7 +459,8 @@ async function send() {
         "Authorization": `Bearer ${token}`
       },
       body: JSON.stringify({
-        prompt: txt  // ← sends prompt to Spring Boot
+        prompt: txt  ,
+        history:msgs// ← sends prompt to Spring Boot
       })
     });
     const data = await res.json();
@@ -471,7 +487,7 @@ async function send() {
         <div ref={endRef} />
       </div>
       <div style={{ padding:"12px 14px", borderTop:`1px solid ${C.gray100}`, display:"flex", gap:8, background:C.white }}>
-        <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Ask about eligibility, EMI, CIBIL..." style={{ flex:1, padding:"10px 14px", borderRadius:24, border:`1px solid ${C.gray100}`, fontSize:13, outline:"none", background:C.gray50 }} />
+        <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Ask about eligibility, EMI, CIBIL..." style={{ flex:1, padding:"10px 14px", borderRadius:24, border:`1px solid ${C.gray100}`, fontSize:13, outline:"none", background:C.gray50, color:C.gray700 }} />
         <button onClick={send} disabled={loading||!input.trim()} style={{ width:40, height:40, borderRadius:"50%", background:C.navy, border:"none", cursor:"pointer", color:C.white, fontSize:16, opacity:(!input.trim()||loading)?0.5:1 }}>→</button>
       </div>
     </div>
@@ -489,7 +505,7 @@ function Analytics({ apps,loanTypes }) {
 
   return (
     <div>
-      <Title sub="Real-time loan portfolio overview">📊 Analytics Dashboard</Title>
+      <Title >📊 Analytics Dashboard</Title>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:12, marginBottom:24 }}>
         {[
           { icon:"📁", label:"Total Applications", value:apps.length,                                   color:C.navy   },
@@ -548,7 +564,7 @@ function Analytics({ apps,loanTypes }) {
               <td style={{ padding:"10px 12px", fontSize:12, color:C.navy, fontWeight:500 }}>{a.id}</td>
               <td style={{ padding:"10px 12px", fontSize:13, color:C.gray700 }}>{a.applicant}</td>
               <td style={{ padding:"10px 12px", fontSize:12, color:C.gray500 }}>{a.type}</td>
-              <td style={{ padding:"10px 12px", fontSize:13, fontWeight:600, color:C.navy }}>{fmtINR(a.amount)}</td>
+              <td style={{ padding:"10px 12px", fontSize:13, fontWeight:600, color:C.navy }}>{fmtINR(a.appliedAmt)}</td>
               <td style={{ padding:"10px 12px", fontSize:13, fontWeight:600, color:a.score>=750?C.green:a.score>=650?C.amber:C.red }}>{a.score}</td>
               <td style={{ padding:"10px 12px" }}><RiskBadge risk={a.risk}/></td>
               <td style={{ padding:"10px 12px" }}><Badge status={a.status}/></td>
@@ -563,6 +579,22 @@ function Analytics({ apps,loanTypes }) {
 /* ═══════════════════════════════════════════════════════════════════════
    APPLY LOAN
 ═══════════════════════════════════════════════════════════════════════ */
+
+function getMaxAmount(loanType, income) {
+  const inc = Number(income);
+  switch(loanType) {
+    case "salary"  : return inc * 60;
+    case "itr"     : return inc * 30;
+    case "pension" : return inc * 40;
+    case "agri"    : return inc * 10;
+    case "housing" : return inc * 80;
+    case "car"     : return inc * 90;  // 90% of vehicle price
+    case "bike"    : return inc * 85;
+    case "gold"    : return inc * 75;
+    default        : return 0;
+  }
+}
+
 function ApplyLoan({ onNotify ,loanTypes}) {
   const [loading, setLoading] = useState(false);
   const [step,setStep]     = useState(0);
@@ -586,39 +618,26 @@ function ApplyLoan({ onNotify ,loanTypes}) {
     })
     .then(res => res.json())
     .then(data => {
-      console.log("Profile:", data);
+      // console.log("Profile:", data);
       set("name", data.name.substring(0, data.name.indexOf("@"))); // first name
       set("dob",  data.dob);
     })
     .catch(err => console.error("Profile fetch failed:", err))
   }, []);
   const set=(k,v)=>setForm(p=>({...p,[k]:v}));
-  console.log(form.income, lt); // ← ADD
+  // console.log(form.income, lt); // ← ADD
   const ea=(()=>{ if(!lt)return 0;
   const base=parseFloat(form.income)||0; 
-  return ["salary","pension","itr"].includes(lt.id)
+  return ["salary","pension","itr","agri"].includes(lt.id)
   ?base*lt.mult
   :base*lt.mult/100; 
    })();
-  console.log("Eligible Amount (ea):", ea); // ← ADD
+  // console.log("Eligible Amount (ea):", ea); // ← ADD
   const emi=calcEMI(ea,lt?.rate||10,tenure);
   const loanAmt=parseFloat(form.appliedAmt)||ea;
   const cEmi=calcEMI(loanAmt,lt?.rate||10,tenure);
   const handleSubmit = async () => {
   
-  console.log("Submit payload:", {
-    loanTypeId:     lt?.id,
-    applicantName:  form.name,
-    mobile:         form.mobile,
-    pan:            form.panKyc,
-    dob:            form.dob,
-    income:         form.income,
-    employer:       form.employer,
-    empType:        form.empType,
-    tenure:         tenure,
-    eligibleAmount: ea,
-    emi:            emi
-  });
     if(!form.name || !form.mobile || !form.panKyc || !form.income) {
       alert("Please fill Name, Mobile, PAN and Income!");
       return;
@@ -629,6 +648,11 @@ function ApplyLoan({ onNotify ,loanTypes}) {
     }
     if(!kycDone) {
       alert("Please complete KYC verification first! Go to 🪪 KYC tab.");
+      return;
+    }
+    const maxAmt = getMaxAmount(lt.id, form.income);
+    if(Number(form.loanAmt) > maxAmt) {
+      alert(`Loan amount exceeds maximum eligible amount of ₹${maxAmt.toLocaleString("en-IN")}!`);
       return;
     }
   const payload = {
@@ -642,7 +666,7 @@ function ApplyLoan({ onNotify ,loanTypes}) {
     empType: form.empType,
     tenure: tenure,
     eligibleAmount: ea,
-    appliedAmt: form.income,
+    appliedAmt: form.loanAmt,
     emi: emi
   };
   try {
@@ -657,7 +681,7 @@ function ApplyLoan({ onNotify ,loanTypes}) {
       setDone(true);
       onNotify?.("🎉 Application submitted successfully!");
     } else {
-      alert("Something went wrong!");
+      alert("Loan Type is already applied by you earlier.");
     }
   } catch(err) {
     console.error("Submit error:", err);
@@ -665,8 +689,8 @@ function ApplyLoan({ onNotify ,loanTypes}) {
   }
 };
 const handleSendOtp = async () => {
-  console.log("form.mobile:", form.mobile); // ← ADD
-  console.log("full form:", form);
+  // console.log("form.mobile:", form.mobile); // ← ADD
+  // console.log("full form:", form);
   if(!form.mobile || form.mobile.length !== 10) {
     alert("Please enter valid 10 digit mobile number!");
     return;
@@ -709,6 +733,7 @@ const handleVerifyOtp = async () => {
       body: JSON.stringify({ mobile: form.mobile, otp: form.otp })
     });
     const data = await res.json();
+    console.log(data);
     if(data.verified) {
       setMobileVerified(true);
       set("otpSent", false);
@@ -806,7 +831,7 @@ const handleVerifyOtp = async () => {
                 <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:C.gray300 }}><span>6 months</span><span>30 years</span></div>
               </Field>
               <Field label="Employment Type">
-                <select value={form.empType||""} onChange={e=>set("empType",e.target.value)} style={{ padding:"10px 12px", borderRadius:10, border:`1px solid ${C.gray100}`, fontSize:14, outline:"none", color:C.gray700 }}>
+                <select value={form.empType||""} onChange={e=>set("empType",e.target.value)} style={{ padding:"10px 12px", borderRadius:10, border:`1px solid ${C.gray100}`, fontSize:14, outline:"none", color:C.gray100  }}>
                   <option value="">Select...</option><option>Salaried</option><option>Self-Employed</option><option>Pensioner</option><option>Farmer</option>
                 </select>
               </Field>
@@ -821,10 +846,25 @@ const handleVerifyOtp = async () => {
           )}
           {tab==="calculator"&&(
             <div style={{ display:"flex", flexDirection:"column", gap:16, maxWidth:600 }}>
-              <Card>
-                <label style={{ fontSize:13, fontWeight:600, color:C.gray500, display:"block", marginBottom:8 }}>Loan Amount (₹)</label>
-                <input type="number" placeholder="Enter amount" value={form.loanAmt||""} onChange={e=>set("loanAmt",e.target.value)} style={{ width:"100%", padding:"12px 14px", borderRadius:10, border:`1px solid ${C.gray100}`, fontSize:16, outline:"none" }} />
-              </Card>
+            <Card>
+  <label style={{ fontSize:13, fontWeight:600, color:C.gray500, display:"block", marginBottom:8 }}>Loan Amount (₹)</label>
+  <input     type="number" placeholder="Enter amount" value={form.loanAmt||""} onChange={e => {
+      console.log(e.target.value);
+      set("loanAmt", e.target.value);
+    }}
+    style={{ width:"100%", padding:"12px 14px", borderRadius:10, border:`1px solid ${C.gray100}`, fontSize:16, outline:"none" }} 
+  />
+ 
+  {form.loanAmt && form.income && lt && (() => {
+    console.log(form.loanAmt, form.income, lt);
+    const maxAmt = getMaxAmount(lt.id, form.income);
+    if(Number(form.loanAmt) > maxAmt) {
+      return <p style={{ color:"#e53e3e", fontSize:12, marginTop:4 }}>
+        ⚠ Max eligible amount is ₹{maxAmt.toLocaleString("en-IN")}
+      </p>
+    }
+  })()}
+</Card>
               <Card>
                 <label style={{ fontSize:13, fontWeight:600, color:C.gray500, display:"block", marginBottom:8 }}>Tenure: {tenure} months</label>
                 <input type="range" min={6} max={360} step={6} value={tenure} onChange={e=>setTenure(+e.target.value)} style={{ width:"100%", accentColor:C.navy }} />
@@ -851,9 +891,32 @@ const handleVerifyOtp = async () => {
               <Card style={{ gridColumn:"1/-1", background:C.blueBg, border:`1px solid ${C.blue}30` }}>
                 <div style={{ fontSize:13, color:C.blue, fontWeight:600, marginBottom:4 }}>🔐 KYC Verification</div>
               </Card>
-              {[{label:"Aadhaar Number",ph:"XXXX XXXX XXXX",k:"aadhaar"},{label:"PAN Number",ph:"ABCDE1234F",k:"panKyc"}].map(f=>(
-                <Input key={f.k} label={f.label} placeholder={f.ph} value={form[f.k]||""} onChange={e=>set(f.k,e.target.value)} />
-              ))}
+              <div>
+  <label style={{ fontSize:13, fontWeight:600, color:C.gray500, display:"block", marginBottom:6 }}>Aadhaar Number</label>
+  <input
+    placeholder="XXXX XXXX XXXX"
+    maxLength={14}
+    value={form.aadhaar||""}
+    onChange={e => {
+      const raw = e.target.value.replace(/\s/g, "");
+      if(!/^\d*$/.test(raw)) return;
+      const formatted = raw.match(/.{1,4}/g)?.join(" ") || raw;
+      set("aadhaar", formatted);
+    }}
+    style={{ width:"100%", padding:"12px 14px", borderRadius:10, border:`1px solid ${C.gray100}`, fontSize:14, outline:"none", boxSizing:"border-box" }}
+  />
+</div>
+
+<div>
+  <label style={{ fontSize:13, fontWeight:600, color:C.gray500, display:"block", marginBottom:6 }}>PAN Number</label>
+  <input
+    placeholder="ABCDE1234F"
+    maxLength={10}
+    value={form.panKyc||""}
+    onChange={e => set("panKyc", e.target.value.toUpperCase())}
+    style={{ width:"100%", padding:"12px 14px", borderRadius:10, border:`1px solid ${C.gray100}`, fontSize:14, outline:"none", boxSizing:"border-box" }}
+  />
+</div>
               <div style={{ gridColumn:"1/-1" }}>
                 <button onClick={async ()=>{
   if(!form.aadhaar || !form.panKyc) {
@@ -872,7 +935,7 @@ const handleVerifyOtp = async () => {
     });
     const data = await res.json();
     
-    console.log("KYC Response:", data); // ← check F12 console
+    // console.log("KYC Response:", data); // ← check F12 console
     if(data.verified) {
       set("kycDone", true);
       setKycDone(true);
@@ -1003,7 +1066,7 @@ async function analyzeAI(app) {
         prompt: `You are a fraud detection AI for an Indian bank. Analyze this loan application:
 
 Applicant: ${app.applicant}
-Loan Type: ${app.loanType}
+Loan Type: ${app.type}
 Amount: ₹${app.appliedAmt?.toLocaleString("en-IN")}
 CIBIL Score: ${app.score}
 Monthly Income: ${app.income ? fmtINR(app.income) : "N/A"}
@@ -1028,7 +1091,7 @@ Please provide in EXACT format:
 
   return (
     <div>
-      <Title sub="AI-powered real-time fraud pattern analysis">🚨 Fraud Detection Engine</Title>
+      <Title>🚨 Fraud Detection Engine</Title>
       <div style={{ display:"grid", gridTemplateColumns:"3fr 2fr", gap:20 }}>
         <div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:20 }}>
@@ -1081,16 +1144,18 @@ function ApprovalWorkflow({ apps, setApps, role, onNotify }) {
   const [sel,setSel]         = useState(null);
   const [insight,setInsight] = useState("");
   const [loading,setLoading] = useState(false);
-  console.log("role:", role);
-  console.log("apps statuses:", apps.map(a=>a.status));
+  const [rejectReason, setRejectReason]       = useState("");      // ✅ add
+  const [showRejectInput, setShowRejectInput] = useState(false);   
+  // console.log("role:", role);
+  // console.log("apps statuses:", apps.map(a=>a.status));
   const queue = role==="checker"?apps.filter(a=>a.status==="pending"):role==="maker"?apps.filter(a=>a.status==="under_review"):apps.filter(a=>a.status==="approved");
- console.log("queue:", queue);
- async function update(id, status) {
+//  console.log("queue:", queue);
+ async function update(id, status,reason="") {
   try {
     const token = localStorage.getItem("token");
     await axios.put(
       `http://localhost:8080/api/loans/${id}/status`,
-      { status },
+      { status,rejectReason:reason },
       { headers: { Authorization: `Bearer ${token}` } }
     );
     setApps(p=>p.map(a=>a.id===id?{...a,status}:a));
@@ -1113,7 +1178,7 @@ function extractRisk(insight) {
 
 async function getInsight(app) {
   setSel(app); setInsight(""); setLoading(true);
-  console.log("App data sent to AI:", app);
+  // console.log("App data sent to AI:", app);
   try {
     const token = localStorage.getItem("token");
     const res = await fetch("http://localhost:8080/api/ai/chat", {
@@ -1141,7 +1206,7 @@ async function getInsight(app) {
 
 Application Details:
 Applicant: ${app.applicant}
-Loan Type: ${app.loanName}
+Loan Type: ${app.type}
 Amount: ₹${app.appliedAmt?.toLocaleString("en-IN")}
 CIBIL Score: ${app.score}
 Monthly Income: ${app.income ? fmtINR(app.income) : "N/A"}
@@ -1152,7 +1217,7 @@ EMI: ${app.emi ? fmtINR(app.emi) : "N/A"}`
       })
     });
    const data = await res.json();
-console.log("AI Response:", data);
+// console.log("AI Response:", data);
 const aiText = data.text || "No response from AI";
 setInsight(aiText);
 
@@ -1165,65 +1230,6 @@ setSel(p => ({...p, risk}));
   }
   setLoading(false);
 }
-function downloadPDF(app, insight) {
-  const { jsPDF } = window.jspdf || require('jspdf');
-  const doc = new jsPDF();
-
-  // Header
-  doc.setFillColor(11, 29, 58); // navy
-  doc.rect(0, 0, 210, 30, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18);
-  doc.text("LoanSmart AI - Loan Assessment Report", 10, 20);
-
-  // Reset color
-  doc.setTextColor(0, 0, 0);
-
-  // Loan Details
-  doc.setFontSize(14);
-  doc.setFont("helvetica", "bold");
-  doc.text("Loan Application Details", 10, 45);
-
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "normal");
-  doc.text(`Applicant Name : ${app.applicant}`, 10, 58);
-  doc.text(`Loan Type      : ${app.type}`, 10, 66);
-  doc.text(`Loan Amount    : Rs. ${app.amount?.toLocaleString("en-IN")}`, 10, 74);
-  doc.text(`CIBIL Score    : ${app.score}`, 10, 82);
-  doc.text(`Monthly Income : Rs. ${app.salary?.toLocaleString("en-IN")}`, 10, 90);
-  doc.text(`Employer       : ${app.employer}`, 10, 98);
-  doc.text(`Employment Type: ${app.empType}`, 10, 106);
-  doc.text(`Tenure         : ${app.tenure} months`, 10, 114);
-  doc.text(`EMI            : Rs. ${app.emi?.toLocaleString("en-IN")}`, 10, 122);
-  doc.text(`Status         : ${app.status?.toUpperCase()}`, 10, 130);
-  doc.text(`Date           : ${new Date().toLocaleDateString("en-IN")}`, 10, 138);
-
-  // Divider
-  doc.setDrawColor(11, 29, 58);
-  doc.line(10, 145, 200, 145);
-
-  // AI Assessment
-  doc.setFontSize(14);
-  doc.setFont("helvetica", "bold");
-  doc.text("AI Risk Assessment", 10, 155);
-
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-
-  // Split long insight text into lines
-  const lines = doc.splitTextToSize(insight, 185);
-  doc.text(lines, 10, 165);
-
-  // Footer
-  doc.setFontSize(9);
-  doc.setTextColor(150, 150, 150);
-  doc.text("Generated by LoanSmart AI | Confidential", 10, 285);
-  doc.text(new Date().toLocaleString("en-IN"), 150, 285);
-
-  // Save PDF
-  doc.save(`LoanReport_${app.applicant}_${new Date().toLocaleDateString("en-IN")}.pdf`);
-}
-
   return (
     <div>
       <Title sub={`${role==="checker"?"First-level review":role==="maker"?"Second-level approval":"Final sanction"} — AI-assisted`}>
@@ -1236,7 +1242,7 @@ function downloadPDF(app, insight) {
           {queue.map(app=>(
             <div key={app.id} onClick={()=>getInsight(app)} style={{ background:sel?.id===app.id?C.navy:C.white, borderRadius:14, padding:16, marginBottom:10, border:`1px solid ${sel?.id===app.id?C.navy:C.gray100}`, cursor:"pointer", transition:"all 0.2s" }}>
               <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
-                <div><div style={{ fontWeight:600, fontSize:14, color:sel?.id===app.id?C.white:C.navy }}>{app.applicant}</div><div style={{ fontSize:11, color:sel?.id===app.id?"rgba(255,255,255,0.5)":C.gray500 }}>{app.id} · {app.loanName}</div></div>
+                <div><div style={{ fontWeight:600, fontSize:14, color:sel?.id===app.id?C.white:C.navy }}>{app.applicant}</div><div style={{ fontSize:11, color:sel?.id===app.id?"rgba(255,255,255,0.5)":C.gray500 }}>{app.type}</div></div>
                 <Badge status={app.status}/>
               </div>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
@@ -1264,10 +1270,40 @@ function downloadPDF(app, insight) {
                 {loading?<div style={{ color:C.gray500, fontSize:13 }}>Analyzing...</div>:<div style={{ fontSize:13, color:C.gray700, lineHeight:1.7, whiteSpace:"pre-wrap" }}>{insight||"Click an application to analyze"}</div>}
               </div>
               <div style={{ display:"flex", gap:10 }}>
-                {role==="checker"&&sel.status==="pending"&&<><button onClick={()=>update(sel.id,"under_review")} style={{ flex:1, padding:"11px", borderRadius:10, background:C.navy, color:C.white, border:"none", cursor:"pointer", fontWeight:600, fontSize:13 }}>Forward to Maker</button><button onClick={()=>update(sel.id,"rejected")} style={{ flex:1, padding:"11px", borderRadius:10, background:C.redBg, color:C.red, border:"none", cursor:"pointer", fontWeight:600, fontSize:13 }}>Reject</button></>}
-                {role==="maker"&&sel.status==="under_review"&&<><button onClick={()=>update(sel.id,"approved")} style={{ flex:1, padding:"11px", borderRadius:10, background:C.green, color:C.white, border:"none", cursor:"pointer", fontWeight:600, fontSize:13 }}>✓ Approve</button><button onClick={()=>update(sel.id,"rejected")} style={{ flex:1, padding:"11px", borderRadius:10, background:C.redBg, color:C.red, border:"none", cursor:"pointer", fontWeight:600, fontSize:13 }}>✗ Reject</button></>}
-                {role==="authorizer"&&sel.status==="approved"&&<><button onClick={()=>update(sel.id,"disbursed")} style={{ flex:1, padding:"11px", borderRadius:10, background:C.purple, color:C.white, border:"none", cursor:"pointer", fontWeight:600, fontSize:13 }}>💸 Disburse</button><button onClick={()=>update(sel.id,"rejected")} style={{ flex:1, padding:"11px", borderRadius:10, background:C.redBg, color:C.red, border:"none", cursor:"pointer", fontWeight:600, fontSize:13 }}>✗ Reject</button></>}
+                {role==="checker"&&sel.status==="pending"&&<><button onClick={()=>update(sel.id,"under_review")} style={{ flex:1, padding:"11px", borderRadius:10, background:C.navy, color:C.white, border:"none", cursor:"pointer", fontWeight:600, fontSize:13 }}>Forward to Maker</button><button onClick={()=>setShowRejectInput(true)} 
+                style={{ flex:1, padding:"11px", borderRadius:10, background:C.redBg, color:C.red, border:"none", cursor:"pointer", fontWeight:600, fontSize:13 }}>✗ Reject</button></>}
+                {role==="maker"&&sel.status==="under_review"&&<><button onClick={()=>update(sel.id,"approved")} style={{ flex:1, padding:"11px", borderRadius:10, background:C.green, color:C.white, border:"none", cursor:"pointer", fontWeight:600, fontSize:13 }}>✓ Approve</button><button onClick={()=>setShowRejectInput(true)} 
+                style={{ flex:1, padding:"11px", borderRadius:10, background:C.redBg, color:C.red, border:"none", cursor:"pointer", fontWeight:600, fontSize:13 }}>✗ Reject</button></>}
+                {role==="authorizer"&&sel.status==="approved"&&<><button onClick={()=>update(sel.id,"disbursed")} style={{ flex:1, padding:"11px", borderRadius:10, background:C.purple, color:C.white, border:"none", cursor:"pointer", fontWeight:600, fontSize:13 }}>💸 Disburse</button><button onClick={()=>setShowRejectInput(true)} 
+                style={{ flex:1, padding:"11px", borderRadius:10, background:C.redBg, color:C.red, border:"none", cursor:"pointer", fontWeight:600, fontSize:13 }}>✗ Reject</button></>}
               </div>
+               {showRejectInput && (
+                <div style={{ marginTop:12, display:"flex", flexDirection:"column", gap:8 }}>
+                  <input
+                    placeholder="Enter rejection reason..."
+                    value={rejectReason}
+                    onChange={e=>setRejectReason(e.target.value)}
+                    style={{ padding:"10px 14px", borderRadius:10, border:`1px solid ${C.red}`, fontSize:13, outline:"none" }}
+                  />
+                  <div style={{ display:"flex", gap:8 }}>
+                    <button 
+                      onClick={()=>{ 
+                        if(!rejectReason.trim()) return alert("Please enter rejection reason!");
+                        update(sel.id, "rejected", rejectReason); 
+                        setShowRejectInput(false); 
+                        setRejectReason("");
+                      }}
+                      style={{ flex:1, padding:"10px", borderRadius:10, background:C.red, color:C.white, border:"none", cursor:"pointer", fontWeight:600 }}>
+                      Confirm Reject
+                    </button>
+                    <button 
+                      onClick={()=>{ setShowRejectInput(false); setRejectReason(""); }}
+                      style={{ flex:1, padding:"10px", borderRadius:10, background:C.gray100, color:C.gray700, border:"none", cursor:"pointer", fontWeight:600 }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+               )}
             </Card>
           ):(
             <Card style={{ textAlign:"center", padding:60 }}><div style={{ fontSize:48, marginBottom:12 }}>📋</div><div style={{ color:C.gray500, fontSize:14 }}>Select an application to review with AI insights</div></Card>
@@ -1286,7 +1322,7 @@ function DisbursementTracker({ apps }) {
   const active = apps.filter(a=>["approved","disbursed"].includes(a.status));
   return (
     <div>
-      <Title sub="Real-time loan disbursement pipeline with stage-wise tracking">📦 Disbursement Tracker</Title>
+      <Title >📦 Disbursement Tracker</Title>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
         <div>
           {active.length===0&&<Card style={{ textAlign:"center", padding:40 }}><div style={{ fontSize:40 }}>📭</div><div style={{ color:C.gray500, fontSize:14, marginTop:8 }}>No loans in disbursement pipeline</div></Card>}
@@ -1384,12 +1420,12 @@ function RedisPanel() {
 ═══════════════════════════════════════════════════════════════════════ */
 function MyLoans({ apps }) {
   const [sel,setSel]=useState(null);
-  console.log("Rendering MyLoans with apps:", apps);
+  // console.log("Rendering MyLoans with apps:", apps);
     if (!Array.isArray(apps)) {
-    console.log("apps is not array:", apps);
+    // console.log("apps is not array:", apps);
     return <div>Loading...</div>;
   }
-
+  console.log(apps);
   if (apps.length === 0) {
     return <div>No loans found</div>;
   }
@@ -1410,8 +1446,21 @@ function MyLoans({ apps }) {
           <Card>
             <div style={{ fontWeight:700, color:C.navy, fontSize:16, marginBottom:4 }}>{sel.type}</div>
             <div style={{ fontSize:13, color:C.gray500, marginBottom:20 }}>{sel.id} · {fmtINR(sel.appliedAmt)}</div>
+            {sel.status === "rejected" && sel.rejectionReason && (
+  <div style={{ 
+    background:"#fff5f5", 
+    border:"1px solid #feb2b2", 
+    borderRadius:10, 
+    padding:"10px 14px", 
+    marginBottom:16,
+    fontSize:13 
+  }}>
+    <span style={{ color:C.red, fontWeight:700 }}>❌ Rejected: </span>
+    <span style={{ color:C.red }}>{sel.rejectionReason}</span>
+  </div>
+)}
             {STAGES.map((stage,i)=>{
-const done=i<=getLoanStage(sel.status); const cur=i===getLoanStage(sel.status);
+             const done=i<=getLoanStage(sel.status); const cur=i===getLoanStage(sel.status);
               return (
                 <div key={i} style={{ display:"flex", gap:14 }}>
                   <div style={{ display:"flex", flexDirection:"column", alignItems:"center" }}>
@@ -1450,8 +1499,8 @@ const fetchApps = async (loadedLoanTypes) => {
       currentUser?.role === "user"
         ? "/api/loans/my"   // 👤 only user's loans
         : "/api/loans/all"; // 👨‍💼 admin/all roles
-     console.log("Fetching from endpoint:", endpoint); // ← ADD THIS
-     console.log("Current role:", currentUser?.role);
+    //  console.log("Fetching from endpoint:", endpoint); // ← ADD THIS
+    //  console.log("Current role:", currentUser?.role);
     const res = await axios.get(
       `http://localhost:8080${endpoint}`,
       {
@@ -1460,7 +1509,7 @@ const fetchApps = async (loadedLoanTypes) => {
         }
       }
     );
-    console.log("Raw apps from backend:", res.data);
+    // console.log("Raw apps from backend:", res.data);
    
    const mapped = res.data.map(loan => ({
   id:        loan.id,
@@ -1478,10 +1527,11 @@ const fetchApps = async (loadedLoanTypes) => {
   empType:   loan.empType,
   tenure:    loan.tenure,
   emi:       loan.emi,
+  rejectionReason: loan.rejectReason,
 }));
-    console.log("Raw first loan:", res.data[0]);
-    console.log("First mapped app:", mapped[0]);
-    console.log("loanTypes:", loanTypes.map(lt=>lt.label));
+    // console.log("Raw first loan:", res.data[0]);
+    // console.log("First mapped app:", mapped[0]);
+    // console.log("loanTypes:", loanTypes.map(lt=>lt.label));
     setApps(mapped);
 
   } catch (err) {
@@ -1489,15 +1539,15 @@ const fetchApps = async (loadedLoanTypes) => {
   }
 };
 const fetchLoanTypes = async () => {
-  console.log("Fetching loan types from backend...");
+  // console.log("Fetching loan types from backend...");
   try {
     const res = await axios.get("http://localhost:8080/api/loans/types");
     const enriched = res.data.map(lt => ({
       ...lt,
       icon: LOAN_ICONS[lt.id]?.icon || "🏦",
     }));
-    console.log("Raw data from backend:", res.data[0]); // ← ADD
-    console.log("Enriched:", enriched[0]); 
+    // console.log("Raw data from backend:", res.data[0]); // ← ADD
+    // console.log("Enriched:", enriched[0]); 
     setLoanTypes(enriched);
     {page==="analytics" && <Analytics apps={apps} loanTypes={loanTypes.length>0?loanTypes:JSON.parse(localStorage.getItem("loanTypes")||"[]")}/>}
     return enriched;
@@ -1590,7 +1640,7 @@ useEffect(() => {
         {page==="apply"     && <ApplyLoan onNotify={notify} loanTypes={loanTypes}/>}
         {page==="myloans"    && <MyLoans apps={apps}/>}
         {page==="cibil"      && <CIBILSimulator/>}
-        {page==="ai"         && <div style={{ maxWidth:700, margin:"0 auto" }}><Title sub="Personalized loan advice powered by Claude AI">🤖 AI Loan Advisor</Title><AIChat/></div>}
+        {page==="ai"         && <div style={{ maxWidth:700, margin:"0 auto" }}><Title sub="Personalized loan advice powered by Groq">🤖 AI Loan Advisor</Title><AIChat/></div>}
         {page==="workflow"   && <ApprovalWorkflow apps={apps} setApps={setApps} role={currentUser.role} onNotify={notify}/>}
         {page==="fraud"      && <FraudPanel apps={apps}/>}
         {page==="disburse"   && <DisbursementTracker apps={apps}/>}

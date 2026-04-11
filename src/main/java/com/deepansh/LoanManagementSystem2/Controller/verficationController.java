@@ -69,7 +69,8 @@ public class verficationController {
         boolean isValid = otp.equals(this.optStored);
         
         return ResponseEntity.ok(Map.of(
-            "message",isValid ? "OTP verified successfully":"OTP verification failed"
+            "message",isValid ? "OTP verified successfully":"OTP verification failed",
+            "verified",true
         ));
     }
 }
