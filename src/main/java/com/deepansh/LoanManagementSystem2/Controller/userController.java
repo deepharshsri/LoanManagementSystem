@@ -22,6 +22,7 @@ import com.deepansh.LoanManagementSystem2.DTO.LoanResponseDTo;
 import com.deepansh.LoanManagementSystem2.Entity.Loan;
 import com.deepansh.LoanManagementSystem2.Entity.User;
 import com.deepansh.LoanManagementSystem2.Repository.LoanRepo;
+import com.deepansh.LoanManagementSystem2.Repository.UserRepository;
 import com.deepansh.LoanManagementSystem2.Service.UserService;
 
 @RestController
@@ -37,7 +38,9 @@ public class userController {
 
   @Autowired
   private LoanRepo loanRepo;
-
+  
+  @Autowired
+  UserRepository userRepo;
 
   @GetMapping("/loans/all")
 public ResponseEntity<?> getAllLoans(Authentication authentication) {
@@ -84,8 +87,10 @@ public ResponseEntity<?> getAllLoans(Authentication authentication) {
         ));
     }
     String status=request.get("status");
-  
-    loanService.updateLoanStatus(id, status,request.get("rejectReason"));
+    String role=request.get("role");
+    String name=userRepo.findNameByUsername(username);
+    System.out.println(name);
+    loanService.updateLoanStatus(id,role,name, status,request.get("rejectReason"));
    
     return ResponseEntity.ok(Map.of(
         "message", "Loan status updated successfully"

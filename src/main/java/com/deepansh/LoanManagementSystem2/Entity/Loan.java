@@ -14,6 +14,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -29,6 +31,7 @@ public class Loan {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String applicantName;
+    
     private String mobile;
     private String pan;
     private String dob;
@@ -41,6 +44,16 @@ public class Loan {
     private String status;
     private Integer appliedAmt;
     private String rejectedReason;
+    private String checkedBy;
+    private String makedBy;
+    private String authorizedBy;
+    private String auditBy;
+    private LocalDateTime checkedAt;
+    private LocalDateTime makedAt;
+    private LocalDateTime authorizedAt;
+    private LocalDateTime auditAt;
+    private LocalDateTime appliedAt;
+
     @ManyToOne
     @JoinColumn (name = "user_id")
     @JsonIgnore

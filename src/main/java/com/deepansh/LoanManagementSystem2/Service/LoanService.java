@@ -14,6 +14,8 @@ import com.deepansh.LoanManagementSystem2.Repository.ApprovalRepo;
 import com.deepansh.LoanManagementSystem2.Repository.LoanRepo;
 import com.deepansh.LoanManagementSystem2.Repository.LoanTypeRepo;
 import com.deepansh.LoanManagementSystem2.Repository.UserRepository;
+
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -69,6 +71,7 @@ public class LoanService {
             .score(score)
             .status("pending")
             .loanType(it)
+            .appliedAt(LocalDateTime.now())
             .build();
         }).orElseThrow(()-> new RuntimeException("Loan Type not found"));
     //    approvalWorkFlowService.createWorkFlow(loanTypeId);
@@ -98,9 +101,15 @@ public class LoanService {
      //
      // need to check again who to take update status responsibilty
      //
-    public Loan updateLoanStatus(Long loanId,String status,String rejectReason){
+    public Loan updateLoanStatus(Long loanId,String role,String username,String status,String rejectReason){
         Loan loan=loanRepo.findById(loanId).get();
         loan.setStatus(status);
+        System.out.println("role: "+role+"username:"+username);
+        switch (role){
+        case "checker" : loan.setCheckedBy(username); loan.setCheckedAt(LocalDateTime.now());break;
+        case "maker" :loan.setMakedBy(username); loan.setMakedAt(LocalDateTime.now());break;
+        case "authorizer" :loan.setAuthorizedBy(username); loan.setAuthorizedAt(LocalDateTime.now());break;
+        }
         if(rejectReason!=null && !rejectReason.isEmpty()) loan.setRejectedReason(rejectReason);
         return loanRepo.save(loan);
     }

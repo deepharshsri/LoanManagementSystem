@@ -20,7 +20,6 @@ import com.deepansh.LoanManagementSystem2.Auth.AuthDetailService;
 import com.deepansh.LoanManagementSystem2.Auth.AuthResponse;
 import com.deepansh.LoanManagementSystem2.Auth.Login;
 import com.deepansh.LoanManagementSystem2.DTO.SignUpDTO;
-import com.deepansh.LoanManagementSystem2.Entity.User;
 import com.deepansh.LoanManagementSystem2.Service.AuthService;
 import com.deepansh.LoanManagementSystem2.Service.UserService;
 

@@ -65,8 +65,14 @@ function Toast({ msg, onClose }) {
     </div>
   );
 }
-function Card({ children, style={} }) {
-  return <div style={{ background:C.white, borderRadius:16, border:`1px solid ${C.gray100}`, padding:20, ...style }}>{children}</div>;
+function Card({ children, style={}, onClick }) {  // ✅ add onClick
+  return (
+    <div 
+      onClick={onClick}   // ✅ add onClick
+      style={{ background:C.white, borderRadius:16, border:`1px solid ${C.gray100}`, padding:20, ...style }}>
+      {children}
+    </div>
+  );
 }
 function Badge({ status }) {
   const m = { pending:{bg:C.amberBg,color:C.amber,label:"Pending"}, under_review:{bg:C.blueBg,color:C.blue,label:"Under Review"}, approved:{bg:C.greenBg,color:C.green,label:"Approved"}, rejected:{bg:C.redBg,color:C.red,label:"Rejected"}, disbursed:{bg:C.purpleBg,color:C.purple,label:"Disbursed"} };
@@ -733,7 +739,7 @@ const handleVerifyOtp = async () => {
       body: JSON.stringify({ mobile: form.mobile, otp: form.otp })
     });
     const data = await res.json();
-    console.log(data);
+    // console.log(data);
     if(data.verified) {
       setMobileVerified(true);
       set("otpSent", false);
@@ -856,7 +862,7 @@ const handleVerifyOtp = async () => {
   />
  
   {form.loanAmt && form.income && lt && (() => {
-    console.log(form.loanAmt, form.income, lt);
+    // console.log(form.loanAmt, form.income, lt);
     const maxAmt = getMaxAmount(lt.id, form.income);
     if(Number(form.loanAmt) > maxAmt) {
       return <p style={{ color:"#e53e3e", fontSize:12, marginTop:4 }}>
@@ -1155,7 +1161,7 @@ function ApprovalWorkflow({ apps, setApps, role, onNotify }) {
     const token = localStorage.getItem("token");
     await axios.put(
       `http://localhost:8080/api/loans/${id}/status`,
-      { status,rejectReason:reason },
+      { role,status,rejectReason:reason },
       { headers: { Authorization: `Bearer ${token}` } }
     );
     setApps(p=>p.map(a=>a.id===id?{...a,status}:a));
@@ -1414,7 +1420,331 @@ function RedisPanel() {
     </div>
   );
 }
+function AuditPanel({ apps }) {
+  const [searchType, setSearchType] = useState("username"); // "username" or "loantype"
+  const [searchValue, setSearchValue] = useState("");
+  const [results, setResults] = useState([]);
+  const [sel, setSel] = useState(null);
+  const [analysis, setAnalysis] = useState("");
+  const [loadingAI, setLoadingAI] = useState(false);
+  const [remarks, setRemarks] = useState("");
+  const [flag, setFlag] = useState("COMPLIANT");
+  const [saved, setSaved] = useState(false);
+//  console.log(apps);
+  // ✅ search loans
+function handleSearch() {
+    if (!searchValue.trim()) return;
+    // console.log("all fields:", Object.keys(apps[0]));
+    // console.log("first app fields:", apps[0]);  // ✅ add this
+    // console.log("applicantName:", apps[0]?.applicant);  // ✅ add this
 
+    let filtered;
+    if (searchType === "username") {
+      filtered = apps.filter(a =>
+        a.applicant?.toLowerCase().includes(searchValue.toLowerCase())
+      );
+    } else {
+      filtered = apps.filter(a =>
+        a.type?.toLowerCase().includes(searchValue.toLowerCase())
+      );
+    }
+    
+    // 
+    setResults(filtered);
+    setSel(null);
+    setAnalysis("");
+}
+
+  // ✅ calculate TAT
+  function calcTAT(from, to) {
+    if (!from || !to) return "Pending";
+    const diff = new Date(to) - new Date(from);
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(hours / 24);
+    return days > 0 ? `${days}d ${hours % 24}h` : `${hours}h`;
+  }
+
+  // ✅ AI analyze
+  async function analyzeWithAI(loan) {
+    setSel(loan);
+    setAnalysis("");
+    setLoadingAI(true);
+    setRemarks("");
+    setSaved(false);
+    
+    const token = localStorage.getItem("token");
+    const prompt = `You are a compliance checker for loan processing. 
+Given loan application data, evaluate the following:
+    
+Loan Type: ${loan.type}
+Applied Amount: ₹${loan.appliedAmt?.toLocaleString("en-IN")}
+Eligible Amount: ₹${loan.eligibleAmount?.toLocaleString("en-IN")}
+CIBIL Score: ${loan.score || "N/A"}
+Status: ${loan.status}
+Rejection Reason: ${loan.rejectionReason || "N/A"}
+
+Timeline:
+Applied:   ${loan.createdAt || "N/A"}
+Checked:   ${loan.checkedAt || "Pending"} (TAT: ${calcTAT(loan.createdAt, loan.checkedAt)})
+Approved:  ${loan.makedAt|| "Pending"} (TAT: ${calcTAT(loan.checkedAt, loan.makedAt)})
+Disbursed: ${loan.authorizedAt || "Pending"} (TAT: ${calcTAT(loan.makedAt, loan.authorizedAt)})
+Total TAT: ${calcTAT(loan.createdAt, loan.authorizedAt || loan.makedAt || loan.checkedAt)}
+
+Checked By:   ${loan.checkedBy || "N/A"}
+Approved By:  ${loan.makedBy || "N/A"}
+Disbursed By: ${loan.authorizedBy || "N/A"}
+
+1. Turnaround Time (TAT): Is it within RBI limits? 
+   - Personal/Salary loans: ≤ 3 days 
+   - Home loans: ≤ 7 days
+2. Sanctioned Amount: Is it within the eligible limit?
+3. Rejection Reason: If rejected, was a valid reason provided?
+4. Workflow: Was the proper workflow followed?
+5. Compliance: Any compliance issues observed?
+
+Output a SHORT compliance report with:
+- A one‑line summary for each check (e.g., "TAT compliant", "Sanctioned amount exceeds limit").
+- A final flag at the end: COMPLIANT / WARNING / NON_COMPLIANT`;
+ console.log("calling AI for loan:", loan.id);
+    try {
+      const res = await fetch("http://localhost:8080/api/ai/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ prompt, role: "auditor" })
+      });
+      const data = await res.json();
+      setAnalysis(data.text || "No response");
+
+      // auto detect flag from AI response
+      const txt = data.text?.toUpperCase() || "";
+      if (txt.includes("NON_COMPLIANT") || txt.includes("NON COMPLIANT")) setFlag("NON_COMPLIANT");
+      else if (txt.includes("WARNING")) setFlag("WARNING");
+      else setFlag("COMPLIANT");
+
+    } catch (err) {
+      setAnalysis("Error connecting to AI.");
+    }
+    setLoadingAI(false);
+  }
+
+  // ✅ save audit
+  async function saveAudit() {
+    if (!remarks.trim()) return alert("Please add remarks before saving!");
+    try {
+      const token = localStorage.getItem("token");
+      await fetch("http://localhost:8080/api/audit/save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          loanId: sel.id,
+          loanType: sel.type,
+          status: sel.status,
+          createdBy:sel.applicant,
+          createdAt:sel.createdAt,
+          checkedBy:sel.checkedBy,
+          checkedAt:sel.checkedAt,
+          approvedBy:sel.makedBy,
+          approvedAt:sel.makedAt,
+          disbursedBy:sel.disbursedBy,
+          disbursedAt:sel.disbursedAt,
+          eligibleAmt: sel.eligibleAmount,
+          sanctionedAmt: sel.appliedAmt,
+          cibil: sel.score,
+          rejectedBy:sel.rejectedBy,
+          reason: sel.rejectionReason,
+          remarks,
+          flag
+        })
+      });
+      setSaved(true);
+    } catch (err) {
+      alert("Failed to save audit!");
+    }
+  }
+
+  const flagColors = {
+    COMPLIANT:     { bg: C.greenBg,  color: C.green,  icon: "✅" },
+    WARNING:       { bg: C.amberBg,  color: C.amber,  icon: "⚠️" },
+    NON_COMPLIANT: { bg: C.redBg,    color: C.red,    icon: "❌" },
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+      {/* ── Header */}
+      <div>
+        <div style={{ fontSize: 22, fontWeight: 800, color: C.navy }}>🔎 Audit Trail</div>
+        <div style={{ fontSize: 13, color: C.gray500, marginTop: 4 }}>
+          Search and analyze loan compliance
+        </div>
+      </div>
+
+      {/* ── Search */}
+      <Card>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+
+          {/* search type toggle */}
+          <div style={{ display: "flex", gap: 8 }}>
+            {["username", "loantype"].map(t => (
+              <button key={t} onClick={() => { setSearchType(t); setSearchValue(""); setResults([]); setSel(null); }}
+                style={{ padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13,
+                  background: searchType === t ? C.navy : C.gray100,
+                  color: searchType === t ? C.white : C.gray700 }}>
+                {t === "username" ? "👤 By Username" : "🏦 By Loan Type"}
+              </button>
+            ))}
+          </div>
+
+          {/* search input */}
+          <div style={{ display: "flex", gap: 8, flex: 1 }}>
+            <input
+              placeholder={searchType === "username" ? "Enter applicant name..." : "Enter loan type (salary, car, housing...)"}
+              value={searchValue}
+              onChange={e => setSearchValue(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleSearch()}
+              style={{ flex: 1, padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.gray100}`, fontSize: 14, outline: "none" }}
+            />
+            <button onClick={handleSearch}
+              style={{ padding: "10px 20px", borderRadius: 10, background: C.navy, color: C.white, border: "none", cursor: "pointer", fontWeight: 600 }}>
+              Search
+            </button>
+          </div>
+        </div>
+      </Card>
+
+      {/* ── Results + Detail */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: 16 }}>
+
+        {/* results list */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {results.length === 0 && (
+            <Card style={{ textAlign: "center", padding: 40 }}>
+              <div style={{ fontSize: 36, marginBottom: 8 }}>🔍</div>
+              <div style={{ color: C.gray500, fontSize: 13 }}>Search to see loans</div>
+            </Card>
+          )}
+         
+          {results.map(a => (
+            <Card key={a.id} style={{ cursor: "pointer", border: `1px solid ${sel?.id === a.id ? C.navy : C.gray100}`, transition: "all 0.2s" }}
+              onClick={() => analyzeWithAI(a)}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontWeight: 700, color: C.navy, fontSize: 14 }}>{a.applicant}</div>
+                  <div style={{ fontSize: 12, color: C.gray500, marginTop: 2 }}>{a.type} · ₹{a.appliedAmt?.toLocaleString("en-IN")}</div>
+                </div>
+                <div style={{ padding: "4px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600,
+                  background: a.status === "approved" || a.status === "disbursed" ? C.greenBg :
+                              a.status === "rejected" ? C.redBg : C.amberBg,
+                  color: a.status === "approved" || a.status === "disbursed" ? C.green :
+                         a.status === "rejected" ? C.red : C.amber }}>
+                  {a.status?.toUpperCase()}
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+
+        {/* detail + AI analysis */}
+        {sel ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+            {/* loan timeline */}
+            <Card>
+              <div style={{ fontWeight: 700, color: C.navy, fontSize: 15, marginBottom: 12 }}>
+                📋 Loan Timeline — {sel.applicantName}
+              </div>
+              {[
+                { label: "Applied",   by: sel.createdBy  || sel.applicantName, at: sel.createdAt,   tat: null },
+                { label: "Checked",   by: sel.checkedBy  || "Pending",         at: sel.checkedAt,   tat: calcTAT(sel.createdAt, sel.checkedAt) },
+                { label: "Approved",  by: sel.makedBy    || "Pending",         at: sel.makedAt,  tat: calcTAT(sel.checkedAt, sel.makedAt) },
+                { label: "Disbursed", by: sel.authorizedBy|| "Pending",         at: sel.authorizedAt, tat: calcTAT(sel.makedAt, sel.authorizedAt) },
+              ].map((s, i) => (
+                <div key={i} style={{ display: "flex", gap: 12, marginBottom: 10, alignItems: "flex-start" }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700,
+                    background: s.at ? C.green : C.gray100,
+                    color: s.at ? C.white : C.gray300 }}>
+                    {s.at ? "✓" : i + 1}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: s.at ? C.navy : C.gray300 }}>{s.label}</div>
+                    <div style={{ fontSize: 11, color: C.gray500 }}>{s.by} {s.at ? `· ${s.at}` : ""}</div>
+                    {s.tat && s.tat !== "Pending" && (
+                      <div style={{ fontSize: 11, color: C.blue }}>TAT: {s.tat}</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {sel.status === "rejected" && sel.rejectionReason && (
+                <div style={{ background: C.redBg, borderRadius: 8, padding: "8px 12px", fontSize: 12, color: C.red, marginTop: 8 }}>
+                  ❌ Rejection Reason: {sel.rejectionReason}
+                </div>
+              )}
+            </Card>
+
+            {/* AI analysis */}
+            <Card>
+              <div style={{ fontWeight: 700, color: C.navy, fontSize: 15, marginBottom: 8 }}>🤖 AI Compliance Analysis</div>
+              {loadingAI ? (
+                <div style={{ color: C.gray500, fontSize: 13 }}>Analyzing...</div>
+              ) : analysis ? (
+                <div style={{ fontSize: 13, color: C.gray700, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{analysis}</div>
+              ) : (
+                <div style={{ color: C.gray500, fontSize: 13 }}>Click a loan to analyze</div>
+              )}
+            </Card>
+
+            {/* auditor remarks + flag */}
+            {analysis && !loadingAI && (
+              <Card>
+                <div style={{ fontWeight: 700, color: C.navy, fontSize: 15, marginBottom: 12 }}>📝 Auditor Remarks</div>
+
+                {/* flag selector */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                  {["COMPLIANT", "WARNING", "NON_COMPLIANT"].map(f => (
+                    <button key={f} onClick={() => setFlag(f)}
+                      style={{ flex: 1, padding: "8px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 12,
+                        background: flag === f ? flagColors[f].bg : C.gray100,
+                        color: flag === f ? flagColors[f].color : C.gray500 }}>
+                      {flagColors[f].icon} {f.replace("_", " ")}
+                    </button>
+                  ))}
+                </div>
+
+                {/* remarks input */}
+                <textarea
+                  placeholder="Add your audit observations..."
+                  value={remarks}
+                  onChange={e => setRemarks(e.target.value)}
+                  rows={3}
+                  style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.gray100}`, fontSize: 13, outline: "none", resize: "vertical", boxSizing: "border-box" }}
+                />
+
+                <button onClick={saveAudit}
+                  style={{ width: "100%", marginTop: 10, padding: 12, borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 14,
+                    background: saved ? C.green : C.navy,
+                    color: C.white }}>
+                  {saved ? "✅ Audit Saved!" : "💾 Save Audit"}
+                </button>
+              </Card>
+            )}
+          </div>
+        ) : (
+          <Card style={{ textAlign: "center", padding: 60 }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
+            <div style={{ color: C.gray500, fontSize: 14 }}>Select a loan to see timeline and AI analysis</div>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
 /* ═══════════════════════════════════════════════════════════════════════
    MY LOANS
 ═══════════════════════════════════════════════════════════════════════ */
@@ -1425,7 +1755,7 @@ function MyLoans({ apps }) {
     // console.log("apps is not array:", apps);
     return <div>Loading...</div>;
   }
-  console.log(apps);
+  // console.log(apps);
   if (apps.length === 0) {
     return <div>No loans found</div>;
   }
@@ -1509,9 +1839,9 @@ const fetchApps = async (loadedLoanTypes) => {
         }
       }
     );
-    // console.log("Raw apps from backend:", res.data);
+  console.log("Raw apps from backend:", res.data);
    
-   const mapped = res.data.map(loan => ({
+  const mapped = res.data.map(loan => ({
   id:        loan.id,
   applicant: loan.applicantName || loan.applicant,  // ← handles both
   type:      loan.loanType?.label || loan.loanName || loan.type, // ← handles both
@@ -1528,6 +1858,18 @@ const fetchApps = async (loadedLoanTypes) => {
   tenure:    loan.tenure,
   emi:       loan.emi,
   rejectionReason: loan.rejectReason,
+  eligibleAmount:loan.eligibleAmount,
+  createdAt:loan.createdAt,
+  craetedBy:loan.createdBy,
+  checkedAt:loan.checkedAt,
+  checkedBy:loan.checkedBy,
+  makedBy:loan.makedBy,
+  makedAt:loan.makedAt,
+  authorizedBy:loan.authorizedBy,
+  authorizedAt:loan.authorizedAt,
+  auditRemarks:loan.auditRemarks,
+  auditFlag:loan.auditFlag,
+  createdAt:loan.createdAt,
 }));
     // console.log("Raw first loan:", res.data[0]);
     // console.log("First mapped app:", mapped[0]);
@@ -1577,7 +1919,9 @@ useEffect(() => {
 
   function handleLogin(user) {
     setCurrentUser(user);
-    setPage(user.role==="user"?"apply":"analytics");
+    setPage(
+    user.role === "user"    ? "apply":
+    user.role === "auditor" ? "analytics" :  "analytics");
   }
 
   function handleLogout() {
@@ -1592,7 +1936,8 @@ useEffect(() => {
     checker:    [{id:"analytics",label:"Dashboard",icon:"📊"},{id:"workflow",label:"Review Queue",icon:"🔍"},{id:"fraud",label:"Fraud",icon:"🚨"}],
     maker:      [{id:"analytics",label:"Dashboard",icon:"📊"},{id:"workflow",label:"Approve",icon:"✍️"},{id:"fraud",label:"Fraud",icon:"🚨"},{id:"disburse",label:"Disburse",icon:"📦"}],
     authorizer: [{id:"analytics",label:"Dashboard",icon:"📊"},{id:"workflow",label:"Final Approve",icon:"🔐"},{id:"disburse",label:"Disburse",icon:"📦"},{id:"redis",label:"Redis",icon:"🗄️"}],
-  };
+    auditor:    [{id:"analytics", label:"Analytics", icon:"📊"},{id:"audit",     label:"Audit",     icon:"🔎"}],
+   };
 
   // Show login page if not logged in
   if(!currentUser) return <LoginPage onLogin={handleLogin} />;
@@ -1645,6 +1990,7 @@ useEffect(() => {
         {page==="fraud"      && <FraudPanel apps={apps}/>}
         {page==="disburse"   && <DisbursementTracker apps={apps}/>}
         {page==="redis"      && <RedisPanel/>}
+        {page==="audit" && <AuditPanel apps={apps} />}
       </main>
     </div>
   );
