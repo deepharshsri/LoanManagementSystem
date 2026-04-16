@@ -1832,7 +1832,7 @@ const fetchApps = async (loadedLoanTypes) => {
     //  console.log("Fetching from endpoint:", endpoint); // ← ADD THIS
     //  console.log("Current role:", currentUser?.role);
     const res = await axios.get(
-      `http://localhost:8080${endpoint}`,
+      `${import.meta.env.VITE_API_BASE_URL}${endpoint}`,
       {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`
