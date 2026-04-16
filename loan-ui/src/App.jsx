@@ -120,7 +120,7 @@ function LoginPage({ onLogin }) {
     e.preventDefault();
     setError(""); setLoading(true);
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/auth/login`, {
+      const res = await fetch("http://localhost:8080/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: form.username, password: form.password })
@@ -143,7 +143,7 @@ function LoginPage({ onLogin }) {
  async function handleStep1Next() {
   setError(""); setLoading(true);
   try {
-    const res = await fetch(`${process.env.REACT_APP_API_URL}/api/auth/check-duplicate?email=${form.username}&aadhaar=&pan=`);
+    const res = await fetch(`http://localhost:8080/api/auth/check-duplicate?email=${form.username}&aadhaar=&pan=`);
     const data = await res.json();
     if (data.emailExists) {
       setDuplicateErrors(prev => ({ ...prev, email: "Email already registered." }));
@@ -161,7 +161,7 @@ function LoginPage({ onLogin }) {
 async function handleStep2Next() {
   setError(""); setLoading(true);
   try {
-    const res = await fetch(`${process.env.REACT_APP_API_URL}/api/auth/check-duplicate?email=&aadhaar=${form.aadhaar}&pan=${form.pan}`);
+    const res = await fetch(`http://localhost:8080/api/auth/check-duplicate?email=&aadhaar=${form.aadhaar}&pan=${form.pan}`);
     const data = await res.json();
     if (data.aadhaarExists || data.panExists) {
       setDuplicateErrors(prev => ({
@@ -186,7 +186,7 @@ async function handleStep2Next() {
 
     try {
       
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/auth/register`, {
+      const res = await fetch("http://localhost:8080/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form)
@@ -312,7 +312,7 @@ async function handleStep2Next() {
                 <input type="email" placeholder="yourname@email.com" value={form.username||""} onChange={e=>set("username",e.target.value)}
                 onBlur={async (e) => {                                              // ✅ add this
                if(!e.target.value) return;
-               const res = await fetch(`${process.env.REACT_APP_API_URL}/api/auth/check-duplicate?field=email&value=${e.target.value}`);
+               const res = await fetch(`http://localhost:8080/api/auth/check-duplicate?field=email&value=${e.target.value}`);
                const data = await res.json();
                setDuplicateErrors(prev => ({ ...prev, email: data.exists ? "Email already registered." : "" }));
                }}
@@ -370,7 +370,7 @@ async function handleStep2Next() {
     
     if(clean.value.length !== 14) return;
     console.log(clean.value.length);
-    const res = await fetch(`${process.env.REACT_APP_API_URL}/api/auth/check-duplicate?field=aadhaar&value=${clean.value}`);
+    const res = await fetch(`http://localhost:8080/api/auth/check-duplicate?field=aadhaar&value=${clean.value}`);
     const data = await res.json();
     setDuplicateErrors(prev => ({ ...prev, aadhaar: data.exists ? "Aadhaar already registered." : "" }));
   }}
@@ -385,7 +385,7 @@ async function handleStep2Next() {
                 <input placeholder="ABCDE1234F" maxLength={10} value={form.pan||""} onChange={e=>set("pan",e.target.value.toUpperCase())}
                   onBlur={async (e) => {
     if(e.target.value.length !== 10) return; // only check if valid length
-    const res = await fetch(`${process.env.REACT_APP_API_URL}/api/auth/check-duplicate?field=pan&value=${e.target.value}`);
+    const res = await fetch(`http://localhost:8080/api/auth/check-duplicate?field=pan&value=${e.target.value}`);
     const data = await res.json();
     setDuplicateErrors(prev => ({ ...prev, pan: data.exists ? "PAN already registered." : "" }));
   }}
@@ -458,7 +458,7 @@ async function send() {
   setLoading(true);
   try {
     const token = localStorage.getItem("token");
-    const res = await fetch(`${process.env.REACT_APP_API_URL}/api/ai/chat`, {
+    const res = await fetch("http://localhost:8080/api/ai/chat", {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
@@ -615,7 +615,7 @@ function ApplyLoan({ onNotify ,loanTypes}) {
   const [mobileVerified, setMobileVerified] = useState(false);
     useEffect(() => {
     const token = localStorage.getItem("token");
-    fetch(`${process.env.REACT_APP_API_URL}/api/user/profile`, {
+    fetch("http://localhost:8080/api/user/profile", {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${token}`,
@@ -677,7 +677,7 @@ function ApplyLoan({ onNotify ,loanTypes}) {
   };
   try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/loans/apply`, {
+      const res = await fetch("http://localhost:8080/api/loans/apply", {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`,
                  "Content-Type": "application/json" },
@@ -703,7 +703,7 @@ const handleSendOtp = async () => {
   }
   try {
     const token = localStorage.getItem("token"); // ← get JWT
-    const res = await fetch(`${process.env.REACT_APP_API_URL}/api/otp/send`, {
+    const res = await fetch("http://localhost:8080/api/otp/send", {
       method: "POST",
       headers: { 
         "Content-Type": "application/json" ,
@@ -729,7 +729,7 @@ const handleVerifyOtp = async () => {
   }
   try {
     const token = localStorage.getItem("token"); // ← get JWT
-    const res = await fetch(`${process.env.REACT_APP_API_URL}/api/otp/verify`, {
+    const res = await fetch("http://localhost:8080/api/otp/verify", {
       method: "POST",
       headers: { 
 
@@ -931,7 +931,7 @@ const handleVerifyOtp = async () => {
   }
   try {
     const token = localStorage.getItem("token");
-    const res = await fetch(`${process.env.REACT_APP_API_URL}//api/kyc/verify`, {
+    const res = await fetch("http://localhost:8080/api/kyc/verify", {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
@@ -1062,7 +1062,7 @@ async function analyzeAI(app) {
   setSel(app); setAnalysis(""); setLoading(true);
   try {
     const token = localStorage.getItem("token");
-    const res = await fetch(`${process.env.REACT_APP_API_URL}/api/ai/chat`, {
+    const res = await fetch("http://localhost:8080/api/ai/chat", {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
@@ -1160,7 +1160,7 @@ function ApprovalWorkflow({ apps, setApps, role, onNotify }) {
   try {
     const token = localStorage.getItem("token");
     await axios.put(
-      `${process.env.REACT_APP_API_URL}/api/loans/${id}/status`,
+      `http://localhost:8080/api/loans/${id}/status`,
       { role,status,rejectReason:reason },
       { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -1187,7 +1187,7 @@ async function getInsight(app) {
   // console.log("App data sent to AI:", app);
   try {
     const token = localStorage.getItem("token");
-    const res = await fetch(`${process.env.REACT_APP_API_URL}/api/ai/chat`, {
+    const res = await fetch("http://localhost:8080/api/ai/chat", {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
@@ -1507,7 +1507,7 @@ Output a SHORT compliance report with:
 - A final flag at the end: COMPLIANT / WARNING / NON_COMPLIANT`;
  console.log("calling AI for loan:", loan.id);
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/ai/chat`, {
+      const res = await fetch("http://localhost:8080/api/ai/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1535,7 +1535,7 @@ Output a SHORT compliance report with:
     if (!remarks.trim()) return alert("Please add remarks before saving!");
     try {
       const token = localStorage.getItem("token");
-      await fetch(`${process.env.REACT_APP_API_URL}/api/audit/save`, {
+      await fetch("http://localhost:8080/api/audit/save", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1883,7 +1883,7 @@ const fetchApps = async (loadedLoanTypes) => {
 const fetchLoanTypes = async () => {
   // console.log("Fetching loan types from backend...");
   try {
-    const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/loans/types`);
+    const res = await axios.get("http://localhost:8080/api/loans/types");
     const enriched = res.data.map(lt => ({
       ...lt,
       icon: LOAN_ICONS[lt.id]?.icon || "🏦",
