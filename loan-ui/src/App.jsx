@@ -143,7 +143,7 @@ function LoginPage({ onLogin }) {
  async function handleStep1Next() {
   setError(""); setLoading(true);
   try {
-    const res = await fetch(`http://localhost:8080/api/auth/check-duplicate?email=${form.username}&aadhaar=&pan=`);
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/check-duplicate?email=${form.username}&aadhaar=&pan=`);
     const data = await res.json();
     if (data.emailExists) {
       setDuplicateErrors(prev => ({ ...prev, email: "Email already registered." }));
@@ -161,7 +161,7 @@ function LoginPage({ onLogin }) {
 async function handleStep2Next() {
   setError(""); setLoading(true);
   try {
-    const res = await fetch(`http://localhost:8080/api/auth/check-duplicate?email=&aadhaar=${form.aadhaar}&pan=${form.pan}`);
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/check-duplicate?email=&aadhaar=${form.aadhaar}&pan=${form.pan}`);
     const data = await res.json();
     if (data.aadhaarExists || data.panExists) {
       setDuplicateErrors(prev => ({
@@ -312,7 +312,7 @@ async function handleStep2Next() {
                 <input type="email" placeholder="yourname@email.com" value={form.username||""} onChange={e=>set("username",e.target.value)}
                 onBlur={async (e) => {                                              // ✅ add this
                if(!e.target.value) return;
-               const res = await fetch(`http://localhost:8080/api/auth/check-duplicate?field=email&value=${e.target.value}`);
+               const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/check-duplicate?field=email&value=${e.target.value}`);
                const data = await res.json();
                setDuplicateErrors(prev => ({ ...prev, email: data.exists ? "Email already registered." : "" }));
                }}
@@ -370,7 +370,7 @@ async function handleStep2Next() {
     
     if(clean.value.length !== 14) return;
     console.log(clean.value.length);
-    const res = await fetch(`http://localhost:8080/api/auth/check-duplicate?field=aadhaar&value=${clean.value}`);
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/check-duplicate?field=aadhaar&value=${clean.value}`);
     const data = await res.json();
     setDuplicateErrors(prev => ({ ...prev, aadhaar: data.exists ? "Aadhaar already registered." : "" }));
   }}
@@ -385,7 +385,7 @@ async function handleStep2Next() {
                 <input placeholder="ABCDE1234F" maxLength={10} value={form.pan||""} onChange={e=>set("pan",e.target.value.toUpperCase())}
                   onBlur={async (e) => {
     if(e.target.value.length !== 10) return; // only check if valid length
-    const res = await fetch(`http://localhost:8080/api/auth/check-duplicate?field=pan&value=${e.target.value}`);
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/check-duplicate?field=pan&value=${e.target.value}`);
     const data = await res.json();
     setDuplicateErrors(prev => ({ ...prev, pan: data.exists ? "PAN already registered." : "" }));
   }}
@@ -1160,7 +1160,7 @@ function ApprovalWorkflow({ apps, setApps, role, onNotify }) {
   try {
     const token = localStorage.getItem("token");
     await axios.put(
-      `http://localhost:8080/api/loans/${id}/status`,
+      ``${import.meta.env.VITE_API_BASE_URL}/api/loans/${id}/status`,
       { role,status,rejectReason:reason },
       { headers: { Authorization: `Bearer ${token}` } }
     );
