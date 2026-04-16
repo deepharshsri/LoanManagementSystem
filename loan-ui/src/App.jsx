@@ -1160,7 +1160,7 @@ function ApprovalWorkflow({ apps, setApps, role, onNotify }) {
   try {
     const token = localStorage.getItem("token");
     await axios.put(
-      ``${import.meta.env.VITE_API_BASE_URL}/api/loans/${id}/status`,
+      `${import.meta.env.VITE_API_BASE_URL}/api/loans/${id}/status`,
       { role,status,rejectReason:reason },
       { headers: { Authorization: `Bearer ${token}` } }
     );
