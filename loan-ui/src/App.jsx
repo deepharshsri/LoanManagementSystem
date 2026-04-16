@@ -120,7 +120,7 @@ function LoginPage({ onLogin }) {
     e.preventDefault();
     setError(""); setLoading(true);
     try {
-      const res = await fetch("http://localhost:8080/api/auth/login", {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: form.username, password: form.password })
@@ -186,7 +186,7 @@ async function handleStep2Next() {
 
     try {
       
-      const res = await fetch("http://localhost:8080/api/auth/register", {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form)
@@ -458,7 +458,7 @@ async function send() {
   setLoading(true);
   try {
     const token = localStorage.getItem("token");
-    const res = await fetch("http://localhost:8080/api/ai/chat", {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/ai/chat`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
@@ -615,7 +615,7 @@ function ApplyLoan({ onNotify ,loanTypes}) {
   const [mobileVerified, setMobileVerified] = useState(false);
     useEffect(() => {
     const token = localStorage.getItem("token");
-    fetch("http://localhost:8080/api/user/profile", {
+    fetch(`${import.meta.env.VITE_API_BASE_URL}/api/user/profile`, {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${token}`,
@@ -677,7 +677,7 @@ function ApplyLoan({ onNotify ,loanTypes}) {
   };
   try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8080/api/loans/apply", {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/loans/apply`, {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`,
                  "Content-Type": "application/json" },
@@ -703,7 +703,7 @@ const handleSendOtp = async () => {
   }
   try {
     const token = localStorage.getItem("token"); // ← get JWT
-    const res = await fetch("http://localhost:8080/api/otp/send", {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/otp/send`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json" ,
@@ -729,7 +729,7 @@ const handleVerifyOtp = async () => {
   }
   try {
     const token = localStorage.getItem("token"); // ← get JWT
-    const res = await fetch("http://localhost:8080/api/otp/verify", {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/otp/verify`, {
       method: "POST",
       headers: { 
 
@@ -931,7 +931,7 @@ const handleVerifyOtp = async () => {
   }
   try {
     const token = localStorage.getItem("token");
-    const res = await fetch("http://localhost:8080/api/kyc/verify", {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/kyc/verify`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
@@ -1062,7 +1062,7 @@ async function analyzeAI(app) {
   setSel(app); setAnalysis(""); setLoading(true);
   try {
     const token = localStorage.getItem("token");
-    const res = await fetch("http://localhost:8080/api/ai/chat", {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/ai/chat`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
@@ -1187,7 +1187,7 @@ async function getInsight(app) {
   // console.log("App data sent to AI:", app);
   try {
     const token = localStorage.getItem("token");
-    const res = await fetch("http://localhost:8080/api/ai/chat", {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/ai/chat`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
@@ -1507,7 +1507,7 @@ Output a SHORT compliance report with:
 - A final flag at the end: COMPLIANT / WARNING / NON_COMPLIANT`;
  console.log("calling AI for loan:", loan.id);
     try {
-      const res = await fetch("http://localhost:8080/api/ai/chat", {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/ai/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1535,7 +1535,7 @@ Output a SHORT compliance report with:
     if (!remarks.trim()) return alert("Please add remarks before saving!");
     try {
       const token = localStorage.getItem("token");
-      await fetch("http://localhost:8080/api/audit/save", {
+      await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/audit/save`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1883,7 +1883,7 @@ const fetchApps = async (loadedLoanTypes) => {
 const fetchLoanTypes = async () => {
   // console.log("Fetching loan types from backend...");
   try {
-    const res = await axios.get("http://localhost:8080/api/loans/types");
+    const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/loans/types`);
     const enriched = res.data.map(lt => ({
       ...lt,
       icon: LOAN_ICONS[lt.id]?.icon || "🏦",

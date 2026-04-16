@@ -130,7 +130,7 @@ function LoginPage({ onLogin }) {
        Uncomment below and remove the mock section when backend is ready:
 
        try {
-         const res = await fetch("http://localhost:8080/api/auth/login", {
+         const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/login", {
            method: "POST",
            headers: { "Content-Type": "application/json" },
            body: JSON.stringify({ username: form.username, password: form.password })
