@@ -1,7 +1,24 @@
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+html, body, #root {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;        /* ← add this */
+  padding: 0;       /* ← add this */
+  overflow-x: hidden; /* ← add this */
+}
+body {
+  width: 100vw;
+}
 :root {
   --text: #6b6375;
   --text-h: #08060d;
   --bg: #fff;
+   padding: 0;    /* ← add this */
+  margin: 0; 
   --border: #e5e4e7;
   --code-bg: #f4f3ec;
   --accent: #aa3bff;
@@ -55,9 +72,9 @@ body {
 }
 
 #root {
-  width: 1126px;
+  width: 100%;
   max-width: 100%;
-  margin: 0 auto;
+  margin: 0 ;
   text-align: center;
   border-inline: 1px solid var(--border);
   min-height: 100svh;

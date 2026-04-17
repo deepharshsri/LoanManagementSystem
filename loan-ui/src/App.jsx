@@ -273,7 +273,7 @@ async function handleStep2Next() {
                   placeholder="Enter your email"
                   value={form.username||""} 
                   onChange={e=>set("username",e.target.value)}
-                  style={{ width:"100%", padding:"11px 14px", borderRadius:10, border:`1px solid ${C.gray100}`, fontSize:14, outline:"none", color:C.gray700, boxSizing:"border-box" }}
+                  style={{ width:"100%", padding:"11px 14px", borderRadius:10, border:`1px solid ${C.gray100}`,background: "#fff", fontSize:14, outline:"none", color:C.gray700, boxSizing:"border-box" }}
                 />
               </div>
               <div>
@@ -283,7 +283,7 @@ async function handleStep2Next() {
                   placeholder="Enter your password"
                   value={form.password||""} 
                   onChange={e=>set("password",e.target.value)}
-                  style={{ width:"100%", padding:"11px 14px", borderRadius:10, border:`1px solid ${C.gray100}`, fontSize:14, outline:"none", color:C.gray700, boxSizing:"border-box" }}
+                  style={{ width:"100%", padding:"11px 14px", borderRadius:10, border:`1px solid ${C.gray100}`,background: "#fff", fontSize:14, outline:"none", color:C.gray700, boxSizing:"border-box" }}
                 />
               </div>
               {error && <div style={{ color:C.red, fontSize:13 }}>❌ {error}</div>}
@@ -1947,7 +1947,7 @@ useEffect(() => {
   const roleColor  = roleColors[currentUser.role]||C.navy;
 
   return (
-    <div style={{ minHeight:"100vh", background:C.cream }}>
+    <div style={{ minHeight:"100vh",width: "100%", background:C.cream }}>
       <style>{`@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,sans-serif}input:focus,select:focus{border-color:#0B1D3A!important;outline:none}`}</style>
       {toast&&<Toast msg={toast} onClose={()=>setToast(null)} />}
 
