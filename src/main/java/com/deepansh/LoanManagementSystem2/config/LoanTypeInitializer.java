@@ -21,6 +21,7 @@ public class LoanTypeInitializer implements CommandLineRunner{
     
     @Override
     public void run(String... args) throws Exception {
+        if(loanTypeRepo.count()==0){
          LoanType loanType1=new LoanType().builder().id("salary").label("Salary Loan")
                                    .description("Based on net monthly salary") .rate(10.0) .minAmount(500000)
                                    .mult(60).build();
@@ -48,7 +49,8 @@ public class LoanTypeInitializer implements CommandLineRunner{
                                    .description("Against gold ornaments").rate(8.0)
                                    .minAmount(500000).mult(75).build();
     List<LoanType> list=List.of(loanType1,loanType2,loanType3,loanType4,loanType5,loanType6,loanType7,loanType8);                                  
-    loanTypeRepo.saveAll(list);       
+    loanTypeRepo.saveAll(list);  
+    }     
     }
     
 

@@ -33,7 +33,7 @@ public class UserInitializer implements CommandLineRunner{
 
     @Override
     public void run(String... args) throws Exception {
-
+    if(userRepository.count()==0){
     User user2=new User().builder().name("Pratap").username("Pratap@gmail.com")
                         .password(passwordEncoder.encode("Pratap")).dob("01/04/1980")
                         .role("ROLE_MAKER").build();   
@@ -47,6 +47,7 @@ public class UserInitializer implements CommandLineRunner{
                         .password(passwordEncoder.encode("Admin")).dob("01/04/1988")
                         .role("ROLE_AUDITOR").build();
     userRepository.saveAll(List.of(user2,user3,user4,user5)); 
+    }
  
     }
 }
