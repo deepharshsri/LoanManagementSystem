@@ -407,13 +407,11 @@ async function handleStep2Next() {
           {/* ── SIGNUP STEP 3 — CIBIL ── */}
           {mode==="signup" && step===3 && (
             <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-              <div style={{ background:C.amberBg, borderRadius:10, padding:12, fontSize:12, color:C.amber, fontWeight:500 }}>
-                ⚠️ In real world CIBIL is fetched automatically. Enter your score for demo purposes.
-              </div>
+              
               <div>
                 <label style={{ fontSize:12, fontWeight:600, color:C.gray500, display:"block", marginBottom:6 }}>CIBIL Score * (300-900)</label>
                 <input type="number" min={300} max={900} placeholder="Enter your CIBIL score" value={form.cibilScore||""} onChange={e=>set("cibilScore",+e.target.value)}
-                  style={{ width:"100%", padding:"11px 14px", borderRadius:10, border:`1px solid ${C.gray100}`, fontSize:14, outline:"none", color:C.gray700, boxSizing:"border-box" }} />
+                  style={{ width:"100%", padding:"11px 14px", borderRadius:10, border:`1px solid ${C.gray100}`, fontSize:14, outline:"none", color:C.gray70, boxSizing:"border-box" }} />
               </div>
               {/* Score indicator */}
               {form.cibilScore>0 && (

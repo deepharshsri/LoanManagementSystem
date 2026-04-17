@@ -51,7 +51,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfig() {
     CorsConfiguration config = new CorsConfiguration();
    
-    config.setAllowedOrigins(List.of("http://localhost:5173","http://localhost:3000","https://frontend-production-352a8.up.railway.app" )); // ← React URL
+    config.setAllowedOrigins(List.of("http://localhost:5173","http://localhost:3000","https://loanmanagementsystem.up.railway.app" )); // ← React URL
     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE","PATCH"));
     config.setAllowedHeaders(List.of("*"));
     config.setAllowCredentials(true);
