@@ -21,7 +21,7 @@ public class Audit {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    private Long id;
     private String loanType;
     private String status;
     //created by
