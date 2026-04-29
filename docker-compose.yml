@@ -45,5 +45,45 @@ services:
     depends_on:
       - backend
 
+  # docker-compose.yml — add these services
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    configs:
+      - source: prometheus_config
+        target: /etc/prometheus/prometheus.yml
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    volumes:
+      - grafana-data:/var/lib/grafana
+    restart: always 
+
 volumes:
   postgres_data:
+  grafana-data:
+
+configs:
+  prometheus_config:
+    content: |
+      global:
+        scrape_interval: 15s
+      scrape_configs:
+        - job_name: 'loan-management-system'
+          static_configs:
+            - targets: ['host.docker.internal:8080']
+          metrics_path: '/actuator/prometheus' 
