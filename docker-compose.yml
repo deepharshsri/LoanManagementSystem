@@ -16,6 +16,7 @@ services:
   # Redis
   redis:
     image: redis:7-alpine
+
     ports:
       - "6379:6379"
 
@@ -39,7 +40,11 @@ services:
 
   # React Frontend
   frontend:
-    build: ./loan-ui
+    build: 
+      context: ./loan-ui
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=http://localhost:8080  
     ports:
       - "3000:80"
     depends_on:
