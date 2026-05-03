@@ -31,11 +31,7 @@ public class SecurityConfig {
     JWTFilter jwtFilter;
 
 
-     @Bean
-    public WebSecurityCustomizer webSecurityCustomizer() {
-        return web -> web.ignoring()
-            .requestMatchers("/actuator/**");
-    }
+  
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
      http.cors(cors->cors.configurationSource(corsConfig()))
