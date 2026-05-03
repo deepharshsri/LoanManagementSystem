@@ -36,6 +36,7 @@ public class SecurityConfig {
           .requestMatchers(HttpMethod.POST,"/api/auth/login").permitAll()
           .requestMatchers(HttpMethod.POST,"/api/auth/register").permitAll()
           .requestMatchers(HttpMethod.POST,"/api/otp/send").permitAll()
+          .requestMatchers("/actuator/**").permitAll()
           .anyRequest().permitAll())
           .csrf(csrf->csrf.disable())
           .sessionManagement(sesssion->sesssion.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

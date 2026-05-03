@@ -92,5 +92,10 @@ configs:
           static_configs:
             - targets: ['backend:8080']
           metrics_path: '/actuator/prometheus' 
-        
+          scheme: http
+        - job_name: 'loan-railway'
+          static_configs:
+            - targets: ['loanmanagementsystem.up.railway.app']
+          metrics_path: '/actuator/prometheus'
+          scheme: https
         
