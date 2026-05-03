@@ -95,7 +95,7 @@ configs:
           scheme: http
         - job_name: 'loan-railway'
           static_configs:
-            - targets: ['loanmanagementsystem.up.railway.app']
+            - targets: ['loanmanagementsystem-production-a1e8.up.railway.app']
           metrics_path: '/actuator/prometheus'
           scheme: https
         
