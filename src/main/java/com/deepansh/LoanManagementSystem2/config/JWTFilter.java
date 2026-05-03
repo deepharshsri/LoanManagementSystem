@@ -61,6 +61,12 @@ public class JWTFilter extends OncePerRequestFilter{
         return null;
     }
 
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+    String path = request.getServletPath();
+    return path.startsWith("/actuator");
+    }
+
     private UserDetails validateToken(String substring) {
             String bearerToken=extractToken(substring);
             return authDetailService.loadUserByUsername(bearerToken);
