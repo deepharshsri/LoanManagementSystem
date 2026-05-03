@@ -47,9 +47,9 @@ public class SecurityConfig {
           .anyRequest().permitAll())
           .csrf(csrf->csrf.disable())
           .sessionManagement(sesssion->sesssion.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-          .formLogin(form->form.disable())
           .httpBasic(basic->basic.disable())
-          .addFilterAfter(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+          .formLogin(form->form.disable()) 
+          .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
           return http.build();
           
          
